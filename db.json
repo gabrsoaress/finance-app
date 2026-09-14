@@ -1,0 +1,143 @@
+{
+  "categories": [
+    {
+      "id": "cat-1",
+      "name": "Alimentação",
+      "kind": "expense",
+      "color": "#197A57"
+    },
+    {
+      "id": "cat-2",
+      "name": "Casa",
+      "kind": "expense",
+      "color": "#EF9274"
+    },
+    {
+      "id": "cat-3",
+      "name": "Transportes",
+      "kind": "expense",
+      "color": "#3B82F6"
+    },
+    {
+      "id": "cat-4",
+      "name": "Lazer",
+      "kind": "expense",
+      "color": "#F59E0B"
+    },
+    {
+      "id": "cat-5",
+      "name": "Receitas",
+      "kind": "income",
+      "color": "#10B981"
+    },
+    {
+      "id": "cat-6",
+      "name": "Outros",
+      "kind": "expense",
+      "color": "#8B5CF6"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "tx-1",
+      "description": "Continente",
+      "amount": 42.65,
+      "kind": "expense",
+      "source": "WhatsApp",
+      "status": "Confirmed",
+      "occurredOn": "2026-09-11T10:28:00.000Z",
+      "categoryId": "cat-1",
+      "category": "Alimentação"
+    },
+    {
+      "id": "tx-2",
+      "description": "Vencimento",
+      "amount": 2300,
+      "kind": "income",
+      "source": "Banco",
+      "status": "Confirmed",
+      "occurredOn": "2026-09-11T09:03:00.000Z",
+      "categoryId": "cat-5",
+      "category": "Receitas"
+    },
+    {
+      "id": "tx-3",
+      "description": "Galp Energia",
+      "amount": 86.4,
+      "kind": "expense",
+      "source": "WhatsApp",
+      "status": "Confirmed",
+      "occurredOn": "2026-09-10T17:42:00.000Z",
+      "categoryId": "cat-2",
+      "category": "Casa"
+    },
+    {
+      "id": "tx-4",
+      "description": "CP — Comboios de Portugal",
+      "amount": 24,
+      "kind": "expense",
+      "source": "WhatsApp",
+      "status": "Confirmed",
+      "occurredOn": "2026-09-09T08:20:00.000Z",
+      "categoryId": "cat-3",
+      "category": "Transportes"
+    },
+    {
+      "id": "tx-5",
+      "description": "Netflix",
+      "amount": 15.99,
+      "kind": "expense",
+      "source": "Débito direto",
+      "status": "Confirmed",
+      "occurredOn": "2026-09-07T12:00:00.000Z",
+      "categoryId": "cat-4",
+      "category": "Lazer"
+    }
+  ],
+  "budgets": [
+    {
+      "id": "b-1",
+      "categoryId": "cat-1",
+      "category": "Alimentação",
+      "limit": 750,
+      "year": 2026,
+      "month": 9
+    },
+    {
+      "id": "b-2",
+      "categoryId": "cat-2",
+      "category": "Casa",
+      "limit": 600,
+      "year": 2026,
+      "month": 9
+    },
+    {
+      "id": "b-3",
+      "categoryId": "cat-3",
+      "category": "Transportes",
+      "limit": 400,
+      "year": 2026,
+      "month": 9
+    },
+    {
+      "id": "b-4",
+      "categoryId": "cat-4",
+      "category": "Lazer",
+      "limit": 350,
+      "year": 2026,
+      "month": 9
+    }
+  ],
+  "bankConnections": [
+    {
+      "id": "bc-1",
+      "provider": "DemoBank",
+      "institutionName": "Banco de demonstração",
+      "status": "Active",
+      "accountNumber": "•••• 0812",
+      "balance": 4280.5,
+      "lastSync": "2026-09-11T10:28:00.000Z"
+    }
+  ],
+  "attachments": []
+}
