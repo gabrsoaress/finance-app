@@ -27,8 +27,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:8080"])
-          .AllowAnyHeader().AllowAnyMethod()));
+{
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    if (allowedOrigins == null || allowedOrigins.Length == 0 || allowedOrigins.Contains("*"))
+    {
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+    }
+    else
+    {
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+    }
+}));
 
 var app = builder.Build();
 app.UseHttpsRedirection();
