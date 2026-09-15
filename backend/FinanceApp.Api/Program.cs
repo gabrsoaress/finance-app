@@ -42,8 +42,7 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
 var app = builder.Build();
 app.UseHttpsRedirection();
 app.UseCors();
-if (app.Environment.IsDevelopment())
-    await DatabaseSeeder.InitializeAsync(app.Services);
+await DatabaseSeeder.InitializeAsync(app.Services);
 
 var api = app.MapGroup("/api");
 api.MapGet("/health", () => Results.Ok(new { status = "ok", timestamp = DateTimeOffset.UtcNow }));
