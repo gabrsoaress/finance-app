@@ -18,6 +18,10 @@ COPY --from=build /app/publish .
 
 # Render define a variável PORT dinamicamente (padrão 10000)
 ENV ASPNETCORE_URLS=http://+:10000
+# Limitar uso de memória para o plano gratuito do Render (512MB RAM)
+ENV DOTNET_GCHeapHardLimit=402653184
+ENV DOTNET_GCConserveMemory=9
+ENV DOTNET_TieredCompilation=0
 EXPOSE 10000
 
 ENTRYPOINT ["dotnet", "FinanceApp.Api.dll"]
