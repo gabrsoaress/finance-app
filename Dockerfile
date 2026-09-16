@@ -1,5 +1,5 @@
 # Dockerfile na raiz do repositório para o Render
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copiar arquivo de projeto e restaurar dependências
@@ -12,7 +12,7 @@ WORKDIR "/src/backend/FinanceApp.Api"
 RUN dotnet publish "FinanceApp.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Estágio de execução
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
