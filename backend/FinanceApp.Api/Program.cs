@@ -40,9 +40,17 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
 }));
 
 var app = builder.Build();
-app.UseHttpsRedirection();
+// Render gere HTTPS no proxy — não usar UseHttpsRedirection dentro do container
 app.UseCors();
-await DatabaseSeeder.InitializeAsync(app.Services);
+try
+{
+    await DatabaseSeeder.InitializeAsync(app.Services);
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "Falha ao inicializar a base de dados. A aplicação irá continuar sem seed.");
+}
 
 var api = app.MapGroup("/api");
 api.MapGet("/health", () => Results.Ok(new { status = "ok", timestamp = DateTimeOffset.UtcNow }));
