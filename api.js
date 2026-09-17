@@ -1,7 +1,7 @@
 // Camada de API para Comunicação Frontend <-> Backend REST
 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? '/api'
-  : 'https://finance-app-2sq8.onrender.com/api';
+  ? 'http://localhost:8080/api'
+  : '/api';
 
 const ApiService = {
   async getHealth() {
