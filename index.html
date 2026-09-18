@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Finance App — Gestão pelo WhatsApp</title>
+  <script>
+    (function() {
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('mode') !== 'desktop' && (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent))) {
+        if (window.location.pathname === '/' || window.location.pathname.endsWith('/index.html')) {
+          window.location.replace('/mobile.html' + window.location.search);
+        }
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -31,6 +41,7 @@
         <button class="nav-item" data-view="accounts"><span>▣</span>Contas bancárias</button>
       </nav>
       <div class="sidebar-bottom">
+        <a class="nav-item" href="/mobile.html" style="text-decoration:none;"><span class="wa-mini">📱</span>Versão Mobile</a>
         <button class="nav-item" data-view="whatsapp"><span class="wa-mini">⌕</span>WhatsApp</button>
         <button class="nav-item"><span>⚙</span>Definições</button>
         <div class="profile"><div class="avatar">CM</div><div><strong>Clara Martins</strong><small>Plano Essencial</small></div><span>⋮</span></div>

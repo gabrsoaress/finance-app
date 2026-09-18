@@ -500,7 +500,16 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- SERVIDOR DE FICHEIROS ESTÁTICOS ---
-  const requested = pathname === '/' ? '/index.html' : decodeURIComponent(pathname);
+  const ua = req.headers['user-agent'] || '';
+  const isMobile = /Mobile|Android|iPhone|iPad|iPod|IEMobile|BlackBerry|Opera Mini/i.test(ua);
+  const mode = parsedUrl.searchParams.get('mode');
+
+  let defaultPage = '/index.html';
+  if (isMobile && mode !== 'desktop') {
+    defaultPage = '/mobile.html';
+  }
+
+  const requested = (pathname === '/' || pathname === '/index.html') ? defaultPage : decodeURIComponent(pathname);
   const file = path.resolve(root, `.${requested}`);
 
   if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {

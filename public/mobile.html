@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#f7f8f4" />
-  <title>Finance App</title>
+  <title>Finance App Mobile</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,28 +12,339 @@
 </head>
 <body>
   <main class="mobile-app">
+    <!-- INÍCIO / DASHBOARD -->
     <section class="mobile-view active" id="home-view">
-      <header class="mobile-header"><div><p>SEXTA, 11 SET</p><h1>Olá, Clara <span>✦</span></h1></div><button class="profile-photo">CM</button></header>
-      <article class="balance-card"><div class="balance-label"><span>Saldo disponível</span><button id="hide-balance">◉</button></div><strong id="balance-value">€ 4.280,50</strong><div class="balance-footer"><span><i></i> +€ 320,40 este mês</span><button>Ver detalhes <b>›</b></button></div><div class="mobile-wave"></div></article>
-      <section class="quick-actions"><button data-page="add"><span class="action-icon camera">⌁</span>Enviar<br>comprovativo</button><button data-page="planning"><span class="action-icon">◎</span>Planear<br>mês</button><button data-page="reports"><span class="action-icon">▤</span>Relatórios</button><button data-page="transactions"><span class="action-icon">＋</span>Adicionar<br>lançamento</button></section>
-      <section class="section-heading"><div><p>ESTE MÊS</p><h2>Resumo financeiro</h2></div><button class="month-selector">Setembro⌄</button></section>
-      <div class="month-stats"><article><span class="stat-icon income">↗</span><div><small>Receitas</small><b>€ 3.850</b><em>↑ 12,5%</em></div></article><article><span class="stat-icon expense">↘</span><div><small>Despesas</small><b>€ 2.104</b><em class="warm">↑ 4,2%</em></div></article></div>
-      <section class="spending"><div class="section-heading"><div><p>DESPESAS</p><h2>Por categoria</h2></div><button data-page="reports">Ver tudo ›</button></div><div class="category-scroll"><article class="category-card food"><i>⌘</i><span>Alimentação</span><b>€ 620</b><small>29% do total</small></article><article class="category-card home"><i>⌂</i><span>Casa</span><b>€ 540</b><small>26% do total</small></article><article class="category-card move"><i>⌁</i><span>Transportes</span><b>€ 310</b><small>15% do total</small></article></div></section>
-      <section class="recent-mobile"><div class="section-heading"><div><p>RECENTES</p><h2>Últimos lançamentos</h2></div><button data-page="transactions">Ver todos ›</button></div><div id="mobile-transactions"></div></section>
+      <header class="mobile-header">
+        <div>
+          <p id="mobile-current-date">SEXTA, 11 SET</p>
+          <h1>Olá, Clara <span>✦</span></h1>
+        </div>
+        <button class="profile-photo" id="open-profile-btn" title="Perfil & Definições">CM</button>
+      </header>
+
+      <article class="balance-card">
+        <div class="balance-label">
+          <span>Saldo disponível</span>
+          <button id="hide-balance" title="Ocultar/Mostrar Saldo">◉</button>
+        </div>
+        <strong id="balance-value">€ 4.280,50</strong>
+        <div class="balance-footer">
+          <span><i></i> +€ 320,40 este mês</span>
+          <button data-page="transactions">Ver detalhes <b>›</b></button>
+        </div>
+        <div class="mobile-wave"></div>
+      </article>
+
+      <section class="quick-actions">
+        <button data-page="add"><span class="action-icon camera">⌁</span>Enviar<br>comprovativo</button>
+        <button id="quick-add-manual-btn"><span class="action-icon">＋</span>Novo<br>lançamento</button>
+        <button data-page="planning"><span class="action-icon">◎</span>Planear<br>mês</button>
+        <button data-page="accounts"><span class="action-icon">▣</span>Contas<br>bancárias</button>
+      </section>
+
+      <section class="section-heading">
+        <div><p>ESTE MÊS</p><h2>Resumo financeiro</h2></div>
+        <button class="month-selector">Setembro ⌄</button>
+      </section>
+
+      <div class="month-stats">
+        <article><span class="stat-icon income">↗</span><div><small>Receitas</small><b id="home-income-val">€ 3.850</b><em id="home-income-sub">↑ 12,5%</em></div></article>
+        <article><span class="stat-icon expense">↘</span><div><small>Despesas</small><b id="home-expenses-val">€ 2.104</b><em class="warm" id="home-expenses-sub">↑ 4,2%</em></div></article>
+      </div>
+
+      <section class="spending">
+        <div class="section-heading">
+          <div><p>DESPESAS</p><h2>Por categoria</h2></div>
+          <button data-page="reports">Ver tudo ›</button>
+        </div>
+        <div class="category-scroll" id="home-categories-list">
+          <article class="category-card food"><i>⌘</i><span>Alimentação</span><b>€ 620</b><small>29% do total</small></article>
+          <article class="category-card home"><i>⌂</i><span>Casa</span><b>€ 540</b><small>26% do total</small></article>
+          <article class="category-card move"><i>⌁</i><span>Transportes</span><b>€ 310</b><small>15% do total</small></article>
+        </div>
+      </section>
+
+      <section class="recent-mobile">
+        <div class="section-heading">
+          <div><p>RECENTES</p><h2>Últimos lançamentos</h2></div>
+          <button data-page="transactions">Ver todos ›</button>
+        </div>
+        <div id="mobile-transactions"></div>
+      </section>
     </section>
 
-    <section class="mobile-view" id="transactions-view"><header class="simple-header"><div><p>LANÇAMENTOS</p><h1>Movimentos</h1></div><button class="round-button" data-page="add">＋</button></header><div class="chips"><button class="selected">Todos</button><button>Receitas</button><button>Despesas</button></div><div class="transactions-list" id="all-mobile-transactions"></div></section>
+    <!-- MOVIMENTOS / LANÇAMENTOS -->
+    <section class="mobile-view" id="transactions-view">
+      <header class="simple-header">
+        <div><p>LANÇAMENTOS</p><h1>Movimentos</h1></div>
+        <button class="round-button" id="tx-add-manual-btn">＋</button>
+      </header>
+      <div class="chips">
+        <button class="chip-filter selected" data-filter="all">Todos</button>
+        <button class="chip-filter" data-filter="income">Receitas</button>
+        <button class="chip-filter" data-filter="expense">Despesas</button>
+      </div>
+      <div class="transactions-list" id="all-mobile-transactions"></div>
+    </section>
 
-    <section class="mobile-view" id="add-view"><header class="simple-header"><button class="back" data-page="home">‹</button><div><p>WHATSAPP</p><h1>Enviar comprovativo</h1></div></header><div class="add-hero"><div class="sparkle">✦</div><h2>Envie. Nós tratamos do resto.</h2><p>Fotografe ou escolha um PDF. O Fluxo extrai os dados e prepara o lançamento para si.</p></div><div class="upload-mobile" id="mobile-upload"><input type="file" id="mobile-file" accept="image/*,.pdf" hidden><span>⌁</span><b>Fotografar comprovativo</b><small>Use a câmara do telemóvel</small></div><button class="choose-file" id="choose-file">Escolher ficheiro ou PDF</button><div class="how-card"><p>COMO FUNCIONA</p><div><b>1</b><span>Envia o comprovativo</span></div><div><b>2</b><span>Confirmamos os dados identificados</span></div><div><b>3</b><span>O relatório atualiza automaticamente</span></div></div></section>
+    <!-- ENVIAR COMPROVATIVO / ADICIONAR -->
+    <section class="mobile-view" id="add-view">
+      <header class="simple-header">
+        <button class="back" data-page="home">‹</button>
+        <div><p>REGISTO RÁPIDO</p><h1>Novo lançamento</h1></div>
+      </header>
 
-    <section class="mobile-view" id="planning-view"><header class="simple-header"><div><p>PLANEAMENTO</p><h1>O seu mês</h1></div><button class="month-selector">Setembro⌄</button></header><article class="goal-mobile"><span>EM DIA</span><div class="arc"><b>70%</b><small>da meta</small></div><h2>Meta de poupança</h2><p>€ 1.745 de € 2.500</p><div class="goal-progress"><i></i></div><small>Faltam € 754,80 para atingir a meta.</small></article><section class="budget-mobile"><div class="section-heading"><div><p>ORÇAMENTO</p><h2>Limites por categoria</h2></div><button>Editar</button></div><div class="mobile-budget-list"><div><div><span>Alimentação</span><b>€ 620 <small>/ € 750</small></b></div><i><em style="width:83%"></em></i></div><div><div><span>Casa</span><b>€ 540 <small>/ € 600</small></b></div><i><em class="amber" style="width:90%"></em></i></div><div><div><span>Transportes</span><b>€ 310 <small>/ € 400</small></b></div><i><em style="width:77%"></em></i></div><div><div><span>Lazer</span><b>€ 180 <small>/ € 350</small></b></div><i><em style="width:51%"></em></i></div></div></section></section>
+      <div class="add-choice-tabs">
+        <button class="choice-tab active" id="tab-ocr">📄 Via Comprovativo (OCR)</button>
+        <button class="choice-tab" id="tab-manual">✏️ Inserção Manual</button>
+      </div>
 
-    <section class="mobile-view" id="reports-view"><header class="simple-header"><div><p>RELATÓRIOS</p><h1>Finanças em foco</h1></div><button class="round-button">⇩</button></header><article class="report-highlight"><span>✦</span><p>INSIGHT DE SETEMBRO</p><h2>A alimentação é a sua maior despesa este mês.</h2><small>Representa 29% das despesas — € 120 acima do habitual.</small><button>Ver análise ›</button></article><div class="mobile-report-cards"><article><span>▤</span><div><h3>Resumo mensal</h3><p>Receitas, despesas e saldo.</p></div><b>›</b></article><article><span class="pink">◔</span><div><h3>Comparativo mensal</h3><p>Compare os últimos 6 meses.</p></div><b>›</b></article><article><span class="sky">◎</span><div><h3>Planeamento</h3><p>Metas e projeções futuras.</p></div><b>›</b></article></div></section>
-    <nav class="bottom-nav"><button class="active" data-page="home"><span>⌂</span>Início</button><button data-page="transactions"><span>↕</span>Movimentos</button><button class="add-nav" data-page="add"><span>＋</span></button><button data-page="planning"><span>◎</span>Plano</button><button data-page="reports"><span>▤</span>Relatórios</button></nav>
+      <div id="ocr-section">
+        <div class="add-hero">
+          <div class="sparkle">✦</div>
+          <h2>Envie. Nós tratamos do resto.</h2>
+          <p>Fotografe a fatura ou escolha um PDF. O OCR reconhece a entidade, o valor e a categoria automaticamente.</p>
+        </div>
+
+        <div class="upload-mobile" id="mobile-upload">
+          <input type="file" id="mobile-file" accept="image/*,.pdf" hidden>
+          <span>⌁</span>
+          <b>Fotografar comprovativo</b>
+          <small>Use a câmara do telemóvel</small>
+        </div>
+        <button class="choose-file" id="choose-file">Escolher ficheiro ou PDF</button>
+
+        <div class="how-card">
+          <p>COMO FUNCIONA</p>
+          <div><b>1</b><span>Envia a foto ou PDF do talão</span></div>
+          <div><b>2</b><span>Reconhecemos o comerciante e valor</span></div>
+          <div><b>3</b><span>Entra automaticamente no seu relatório</span></div>
+        </div>
+      </div>
+
+      <div id="manual-section" style="display:none; padding-top:15px;">
+        <form class="mobile-form" id="mobile-direct-form">
+          <label>Descrição
+            <input required id="manual-desc" placeholder="Ex.: Continente, Uber, Aluguer">
+          </label>
+          <label>Valor (€)
+            <input required id="manual-amount" type="number" step="0.01" placeholder="0,00">
+          </label>
+          <label>Tipo
+            <select id="manual-kind">
+              <option value="expense">Despesa</option>
+              <option value="income">Receita</option>
+            </select>
+          </label>
+          <label>Categoria
+            <select id="manual-cat">
+              <option>Alimentação</option>
+              <option>Casa</option>
+              <option>Transportes</option>
+              <option>Lazer</option>
+              <option>Outros</option>
+            </select>
+          </label>
+          <button class="mobile-submit-btn" type="submit">Guardar Lançamento</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- PLANEAMENTO -->
+    <section class="mobile-view" id="planning-view">
+      <header class="simple-header">
+        <div><p>PLANEAMENTO</p><h1>O seu mês</h1></div>
+        <button class="month-selector">Setembro ⌄</button>
+      </header>
+      <article class="goal-mobile">
+        <span>EM DIA</span>
+        <div class="arc"><b id="mobile-plan-pct">70%</b><small>da meta</small></div>
+        <h2>Meta de poupança</h2>
+        <p id="mobile-plan-subtitle">€ 1.745 de € 2.500</p>
+        <div class="goal-progress"><i id="mobile-plan-bar" style="width:70%"></i></div>
+        <small id="mobile-plan-foot">Mantenha o ritmo para atingir a meta mensal.</small>
+      </article>
+
+      <section class="budget-mobile">
+        <div class="section-heading">
+          <div><p>ORÇAMENTO</p><h2>Limites por categoria</h2></div>
+          <button>Editar</button>
+        </div>
+        <div class="mobile-budget-list" id="mobile-budgets-container">
+          <div><div><span>Alimentação</span><b>€ 620 <small>/ € 750</small></b></div><i><em style="width:83%"></em></i></div>
+          <div><div><span>Casa</span><b>€ 540 <small>/ € 600</small></b></div><i><em class="amber" style="width:90%"></em></i></div>
+          <div><div><span>Transportes</span><b>€ 310 <small>/ € 400</small></b></div><i><em style="width:77%"></em></i></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- RELATÓRIOS -->
+    <section class="mobile-view" id="reports-view">
+      <header class="simple-header">
+        <div><p>RELATÓRIOS</p><h1>Finanças em foco</h1></div>
+        <button class="round-button" id="mobile-export-btn" title="Exportar PDF">⇩</button>
+      </header>
+      <article class="report-highlight">
+        <span>✦</span>
+        <p>INSIGHT DE SETEMBRO</p>
+        <h2 id="mobile-insight-title">A alimentação é a sua maior despesa este mês.</h2>
+        <small id="mobile-insight-desc">Representa 29% das despesas — € 120 acima do habitual.</small>
+        <button data-page="transactions">Ver movimentos ›</button>
+      </article>
+      <div class="mobile-report-cards">
+        <article><span>▤</span><div><h3>Resumo mensal</h3><p>Receitas, despesas e saldo atual.</p></div><b>›</b></article>
+        <article><span class="pink">◔</span><div><h3>Lançamentos</h3><p>Histórico sincronizado com a API.</p></div><b>›</b></article>
+        <article><span class="sky">◎</span><div><h3>Categorias</h3><p>Análise de hábitos de consumo.</p></div><b>›</b></article>
+      </div>
+    </section>
+
+    <!-- CONTAS BANCÁRIAS -->
+    <section class="mobile-view" id="accounts-view">
+      <header class="simple-header">
+        <div><p>OPEN BANKING</p><h1>Contas bancárias</h1></div>
+        <button class="round-button" id="open-bank-modal-btn" title="Ligar banco">＋</button>
+      </header>
+      <article class="mobile-bank-card">
+        <div class="mobile-bank-top">
+          <div class="bank-logo-mini">B</div>
+          <div>
+            <small>CONTA À ORDEM</small>
+            <h3>Banco de demonstração</h3>
+            <span class="mono">•••• 0812</span>
+          </div>
+        </div>
+        <div class="mobile-bank-balance">
+          <small>Saldo sincronizado</small>
+          <strong>€ 4.280,50</strong>
+        </div>
+        <div class="mobile-bank-foot">
+          <span><i></i> Sincronização automática ativa</span>
+        </div>
+      </article>
+      <div class="mobile-bank-actions">
+        <button class="mobile-secondary-btn" id="mobile-connect-another-bank">+ Ligar outra conta</button>
+      </div>
+    </section>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+      <button class="active" data-page="home"><span>⌂</span>Início</button>
+      <button data-page="transactions"><span>↕</span>Movimentos</button>
+      <button class="add-nav" data-page="add"><span>＋</span></button>
+      <button data-page="planning"><span>◎</span>Plano</button>
+      <button data-page="reports"><span>▤</span>Relatórios</button>
+      <button data-page="accounts"><span>▣</span>Contas</button>
+    </nav>
   </main>
+
+  <!-- MODAL: NOVO LANÇAMENTO MANUAL -->
+  <div class="mobile-modal-backdrop" id="mobile-entry-modal">
+    <div class="mobile-modal-card">
+      <button class="mobile-modal-close" id="close-entry-modal">×</button>
+      <p class="mono-label">NOVO LANÇAMENTO</p>
+       atmospheric <h2>Adicionar movimento</h2>
+      <form id="mobile-entry-form">
+        <label>Descrição
+          <input required name="description" placeholder="Ex.: Supermercado, Aluguer">
+        </label>
+        <label>Valor (€)
+          <input required name="amount" type="number" step="0.01" placeholder="0,00">
+        </label>
+        <label>Tipo
+          <select name="type">
+            <option value="expense">Despesa</option>
+            <option value="income">Receita</option>
+          </select>
+        </label>
+        <label>Categoria
+          <select name="category">
+            <option>Alimentação</option>
+            <option>Casa</option>
+            <option>Transportes</option>
+            <option>Lazer</option>
+            <option>Outros</option>
+          </select>
+        </label>
+        <button class="mobile-submit-btn" type="submit">Guardar Lançamento</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR LANÇAMENTO -->
+  <div class="mobile-modal-backdrop" id="mobile-edit-modal">
+    <div class="mobile-modal-card">
+      <button class="mobile-modal-close" id="close-edit-modal">×</button>
+      <p class="mono-label">EDITAR LANÇAMENTO</p>
+      <h2>Atualizar movimento</h2>
+      <form id="mobile-edit-form">
+        <input type="hidden" id="mobile-edit-id">
+        <label>Descrição
+          <input required id="mobile-edit-desc" placeholder="Ex.: Supermercado">
+        </label>
+        <label>Valor (€)
+          <input required id="mobile-edit-amount" type="number" step="0.01" placeholder="0,00">
+        </label>
+        <label>Tipo
+          <select id="mobile-edit-kind">
+            <option value="expense">Despesa</option>
+            <option value="income">Receita</option>
+          </select>
+        </label>
+        <label>Categoria
+          <select id="mobile-edit-cat">
+            <option>Alimentação</option>
+            <option>Casa</option>
+            <option>Transportes</option>
+            <option>Lazer</option>
+            <option>Outros</option>
+          </select>
+        </label>
+        <button class="mobile-submit-btn" type="submit">Atualizar Lançamento</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: LIGAR BANCO -->
+  <div class="mobile-modal-backdrop" id="mobile-bank-modal">
+    <div class="mobile-modal-card">
+      <button class="mobile-modal-close" id="close-bank-modal">×</button>
+      <p class="mono-label">OPEN BANKING</p>
+      <h2>Ligar conta bancária</h2>
+      <p class="modal-sub">Será encaminhado para o seu banco para autorizar a leitura de movimentos.</p>
+      <label style="display:block; margin:12px 0; text-align:left; font-size:11px; font-weight:700;">Escolha o Banco
+        <select id="mobile-bank-select" style="width:100%; padding:10px; margin-top:5px; border:1px solid #ddd; border-radius:8px;">
+          <option value="Caixa Geral de Depósitos">Caixa Geral de Depósitos</option>
+          <option value="Millennium BCP">Millennium BCP</option>
+          <option value="Santander Totta">Santander Totta</option>
+          <option value="Novo Banco">Novo Banco</option>
+          <option value="ActivoBank">ActivoBank</option>
+          <option value="Revolut">Revolut</option>
+        </select>
+      </label>
+      <button class="mobile-submit-btn" id="mobile-confirm-bank">Autorizar e Ligar Banco</button>
+    </div>
+  </div>
+
+  <!-- MODAL: PERFIL E CONFIGURAÇÕES -->
+  <div class="mobile-modal-backdrop" id="mobile-profile-modal">
+    <div class="mobile-modal-card">
+      <button class="mobile-modal-close" id="close-profile-modal">×</button>
+      <div class="profile-header-modal">
+        <div class="profile-photo big">CM</div>
+        <div>
+          <h3>Clara Martins</h3>
+          <small>Plano Essencial · WhatsApp Conectado</small>
+        </div>
+      </div>
+      <div class="profile-actions">
+        <button class="profile-action-btn" id="switch-desktop-btn">🖥️ Abrir Versão Desktop</button>
+        <button class="profile-action-btn outline" id="mobile-theme-btn">🌙 Modo Escuro (Simulação)</button>
+      </div>
+    </div>
+  </div>
+
   <div class="mobile-toast" id="mobile-toast">Comprovativo recebido. Vamos analisar os dados.</div>
   <script src="api.js"></script>
   <script src="mobile.js"></script>
 </body>
-
 </html>
