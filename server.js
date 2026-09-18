@@ -245,6 +245,31 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, db.transactions);
     }
 
+    const txMatch = pathname.match(/^\/api\/transactions\/([^/]+)$/);
+    if (txMatch && req.method === 'PUT') {
+      const body = await parseBody(req);
+      const tx = db.transactions.find(t => t.id === txMatch[1]);
+      if (!tx) return sendJson(res, 404, { error: 'Lançamento não encontrado.' });
+      const catObj = db.categories.find(c => c.id === body.categoryId || c.name === body.category);
+      Object.assign(tx, {
+        description: body.description?.trim() || tx.description,
+        amount: body.amount !== undefined ? parseFloat(body.amount) : tx.amount,
+        kind: body.kind || tx.kind,
+        categoryId: catObj ? catObj.id : tx.categoryId,
+        category: catObj ? catObj.name : (body.category || tx.category || 'Outros')
+      });
+      saveDb(db);
+      return sendJson(res, 200, tx);
+    }
+
+    if (txMatch && req.method === 'DELETE') {
+      const before = db.transactions.length;
+      db.transactions = db.transactions.filter(t => t.id !== txMatch[1]);
+      if (db.transactions.length === before) return sendJson(res, 404, { error: 'Lançamento não encontrado.' });
+      saveDb(db);
+      return sendJson(res, 200, { ok: true });
+    }
+
     if (pathname === '/api/transactions' && req.method === 'POST') {
       const body = await parseBody(req);
       if (!body.description || !body.amount) {

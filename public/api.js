@@ -75,6 +75,20 @@ const ApiService = {
       body: JSON.stringify({ message })
     });
     return await res.json();
+  },
+
+  async deleteTransaction(id) {
+    const res = await fetch(`${API_BASE}/transactions/${id}`, { method: 'DELETE' });
+    return await res.json();
+  },
+
+  async updateTransaction(id, data) {
+    const res = await fetch(`${API_BASE}/transactions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return await res.json();
   }
 };
 

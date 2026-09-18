@@ -9,13 +9,23 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body class="auth-lock">
+  <section class="login-screen" id="login-screen">
+    <form class="login-card" id="login-form">
+      <p class="section-label">ACESSO</p>
+      <h1>Entrar no Finance App</h1>
+      <label>Usuário<select id="login-user"><option value="lucas">Lucas</option><option value="gabriel">Gabriel</option><option value="clara">Clara</option><option value="ana">Ana Teste</option><option value="teste">Perfil Teste</option></select></label>
+      <label>Senha<input id="login-pass" type="password" value="123456"></label>
+      <button class="new-entry" type="submit">Entrar</button>
+      <small>Senha dos usuários teste: 123456</small>
+    </form>
+  </section>
   <div class="shell">
     <aside class="sidebar">
       <a class="brand" href="#">Finance App</a>
       <nav>
         <button class="nav-item active" data-view="dashboard"><span>▦</span>Visão geral</button>
-        <button class="nav-item" data-view="transactions"><span>↕</span>Lançamentos <b>3</b></button>
+        <button class="nav-item" data-view="transactions"><span>↕</span>Lançamentos</button>
         <button class="nav-item" data-view="planning"><span>◎</span>Planeamento</button>
         <button class="nav-item" data-view="reports"><span>▤</span>Relatórios</button>
         <button class="nav-item" data-view="accounts"><span>▣</span>Contas bancárias</button>
@@ -28,7 +38,7 @@
     </aside>
 
     <main>
-      <header><div><p class="eyebrow">SEXTA-FEIRA, 11 DE SETEMBRO</p><h1 id="page-title">Bom dia, Clara <span>✦</span></h1></div><div class="header-actions"><button class="icon-button">⌕</button><button class="icon-button notification">♧</button><button class="new-entry" id="new-entry">+ Novo lançamento</button></div></header>
+      <header><div><p class="eyebrow">SEXTA-FEIRA, 11 DE SETEMBRO</p><h1 id="page-title">Bom dia, Clara <span>✦</span></h1></div><div class="header-actions"><button class="icon-button">⌕</button><button class="icon-button notification">♧</button></div></header>
 
       <section class="view active" id="dashboard">
         <div class="overview-row">
@@ -64,9 +74,12 @@
   <div class="modal-backdrop" id="modal"><form class="entry-modal" id="entry-form"><button type="button" class="close" id="close-modal">×</button><p class="section-label">NOVO LANÇAMENTO</p><h2>Adicionar movimento</h2><label>Descrição<input required name="description" placeholder="Ex.: Mercado do bairro"></label><label>Valor (€)<input required name="amount" type="number" step="0.01" placeholder="0,00"></label><label>Tipo<select name="type"><option value="expense">Despesa</option><option value="income">Receita</option></select></label><label>Categoria<select name="category"><option>Alimentação</option><option>Casa</option><option>Transportes</option><option>Lazer</option><option>Outros</option></select></label><button class="new-entry" type="submit">Guardar lançamento</button></form></div>
   <div class="modal-backdrop" id="bank-modal"><div class="entry-modal bank-modal"><button type="button" class="close" id="close-bank-modal">×</button><p class="section-label">OPEN BANKING</p><h2>Ligar conta bancária</h2><p class="modal-copy">Será encaminhado para o ambiente seguro do seu banco para autorizar a leitura de movimentos.</p><label style="display:block;margin:12px 0;text-align:left;font-size:13px;font-weight:600;color:var(--text-muted);">Banco<select id="bank-select" style="width:100%;padding:10px;margin-top:4px;border:1px solid #ddd;border-radius:8px;font-size:14px;"><option value="Caixa Geral de Depósitos">Caixa Geral de Depósitos</option><option value="Millennium BCP">Millennium BCP</option><option value="Santander Totta">Santander Totta</option><option value="Novo Banco">Novo Banco</option><option value="ActivoBank">ActivoBank</option><option value="Revolut">Revolut</option></select></label><div class="access-summary"><b>Permissões solicitadas:</b><span>✓ Consulta de saldo em tempo real</span><span>✓ Importação de movimentos</span><span>− Não permite realizar transferências ou pagamentos</span></div><button class="new-entry" id="continue-bank">Autorizar e Ligar Banco</button></div></div>
 
+  <div class="modal-backdrop" id="edit-modal"><form class="entry-modal" id="edit-form"><button type="button" class="close" id="close-edit-modal">×</button><p class="section-label">EDITAR LANÇAMENTO</p><h2>Atualizar movimento</h2><input type="hidden" id="edit-tx-id"><label>Descrição<input required id="edit-description" placeholder="Ex.: Mercado do bairro"></label><label>Valor (€)<input required id="edit-amount" type="number" step="0.01" placeholder="0,00"></label><label>Tipo<select id="edit-type"><option value="expense">Despesa</option><option value="income">Receita</option></select></label><label>Categoria<select id="edit-category"><option>Alimentação</option><option>Casa</option><option>Transportes</option><option>Lazer</option><option>Outros</option></select></label><button class="new-entry" type="submit">Guardar alterações</button></form></div>
+
   <div class="toast" id="toast">Comprovativo analisado — lançamento pronto para confirmar.</div>
   <script src="api.js"></script>
   <script src="app.js"></script>
 </body>
 
 </html>
+

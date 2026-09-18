@@ -39,59 +39,26 @@
   ],
   "transactions": [
     {
-      "id": "tx-1",
-      "description": "Continente",
-      "amount": 42.65,
-      "kind": "expense",
-      "source": "WhatsApp",
-      "status": "Confirmed",
-      "occurredOn": "2026-09-11T10:28:00.000Z",
-      "categoryId": "cat-1",
-      "category": "Alimentação"
-    },
-    {
-      "id": "tx-2",
-      "description": "Vencimento",
-      "amount": 2300,
+      "id": "tx-1789663417863",
+      "description": "Salário",
+      "amount": 2000,
       "kind": "income",
-      "source": "Banco",
+      "source": "Manual",
       "status": "Confirmed",
-      "occurredOn": "2026-09-11T09:03:00.000Z",
-      "categoryId": "cat-5",
-      "category": "Receitas"
+      "occurredOn": "2026-09-17T16:43:37.856Z",
+      "categoryId": "cat-6",
+      "category": "Outros"
     },
     {
-      "id": "tx-3",
-      "description": "Galp Energia",
-      "amount": 86.4,
+      "id": "tx-1789663286344",
+      "description": "aluguel",
+      "amount": 650,
       "kind": "expense",
-      "source": "WhatsApp",
+      "source": "Manual",
       "status": "Confirmed",
-      "occurredOn": "2026-09-10T17:42:00.000Z",
+      "occurredOn": "2026-09-17T16:41:26.334Z",
       "categoryId": "cat-2",
       "category": "Casa"
-    },
-    {
-      "id": "tx-4",
-      "description": "CP — Comboios de Portugal",
-      "amount": 24,
-      "kind": "expense",
-      "source": "WhatsApp",
-      "status": "Confirmed",
-      "occurredOn": "2026-09-09T08:20:00.000Z",
-      "categoryId": "cat-3",
-      "category": "Transportes"
-    },
-    {
-      "id": "tx-5",
-      "description": "Netflix",
-      "amount": 15.99,
-      "kind": "expense",
-      "source": "Débito direto",
-      "status": "Confirmed",
-      "occurredOn": "2026-09-07T12:00:00.000Z",
-      "categoryId": "cat-4",
-      "category": "Lazer"
     }
   ],
   "budgets": [

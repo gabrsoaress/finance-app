@@ -2,6 +2,24 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const Tesseract = require('tesseract.js');
+const fs = require('fs');
+const path = require('path');
+const WebSocket = require('ws');
+
+// Polyfill de WebSocket para Node.js < 22 (evita erro 500 na Vercel e local)
+Object.assign(global, { WebSocket });
+
+// Carrega variáveis do ficheiro .env local (para testes locais)
+const envPath = path.join(__dirname, '../.env');
+if (fs.existsSync(envPath)) {
+  const envLines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+  envLines.forEach(line => {
+    const match = line.match(/^\s*([\w_]+)\s*=\s*(.*)\s*$/);
+    if (match) {
+      process.env[match[1]] = match[2].trim().replace(/^['"]|['"]$/g, '');
+    }
+  });
+}
 
 const app = express();
 
@@ -77,7 +95,10 @@ app.get('/api/transactions', async (req, res) => {
     .select('*, Category:categories(*)')
     .eq('UserId', CURRENT_USER_ID)
     .order('OccurredOn', { ascending: false });
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    console.error('Supabase Error:', error);
+    return res.status(500).json({ error: error.message, details: error });
+  }
   
   // Adaptar o formato para o frontend
   const mapped = data.map(t => ({
@@ -125,6 +146,46 @@ app.post('/api/transactions', async (req, res) => {
   res.status(201).json(data[0]);
 });
 
+app.put('/api/transactions/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Supabase não configurado' });
+  const { id } = req.params;
+  const body = req.body;
+
+  const updates = {};
+  if (body.description !== undefined) updates.Description = body.description.trim();
+  if (body.amount !== undefined) updates.Amount = parseFloat(body.amount);
+  if (body.kind !== undefined) updates.Kind = body.kind === 'income' ? 0 : 1;
+  if (body.occurredOn !== undefined) updates.OccurredOn = new Date(body.occurredOn).toISOString().split('T')[0];
+  if (body.category !== undefined) {
+    const { data: catData } = await supabase.from('categories').select('"Id"').eq('Name', body.category).limit(1).single();
+    if (catData) updates.CategoryId = catData.Id;
+  }
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .update(updates)
+    .eq('Id', id)
+    .eq('UserId', CURRENT_USER_ID)
+    .select();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data[0]);
+});
+
+app.delete('/api/transactions/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Supabase não configurado' });
+  const { id } = req.params;
+
+  const { error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('Id', id)
+    .eq('UserId', CURRENT_USER_ID);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
 app.get('/api/categories', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Supabase não configurado' });
   const { data, error } = await supabase.from('categories').select('*').eq('UserId', CURRENT_USER_ID);
@@ -170,6 +231,23 @@ app.get('/api/planning', async (req, res) => {
 
   res.json(items);
 });
+
+// Código para desenvolvimento local
+if (require.main === module) {
+  // Serve ficheiros estáticos da pasta public
+  app.use(express.static(path.join(__dirname, '../public')));
+  
+  // Roteamento SPA (Catch-all)
+  app.use((req, res) => {
+    res.sendFile(path.join(__dirname, '../public/index.html'));
+  });
+
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor local de testes a rodar em http://localhost:${PORT}`);
+    console.log(`Use as variáveis do Supabase (URL/KEY) que colocou no ficheiro .env!`);
+  });
+}
 
 // Exportar como serverless function para Vercel
 module.exports = app;
