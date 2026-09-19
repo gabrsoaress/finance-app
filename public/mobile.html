@@ -5,27 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#f7f8f4" />
   <title>Finance App Mobile</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="mobile.css" />
 </head>
-<body>
+<body class="auth-lock">
+  <!-- TELA DE LOGIN MOBILE -->
+  <section class="mobile-login-screen" id="mobile-login-screen">
+    <div class="mobile-login-card">
+      <p class="mono-label" style="text-align:center" id="mobile-auth-label">ACESSO</p>
+      <h1 id="mobile-auth-title" style="text-align:center; font-size: 22px; margin-bottom: 24px;">Finance App</h1>
+      <form id="mobile-login-form" class="mobile-form" style="border:none; padding:0; background:transparent;">
+        <label id="mobile-auth-name-label" style="display:none;">Nome<input id="mobile-login-name" type="text" placeholder="Seu nome"></label>
+        <label>Email<input id="mobile-login-email" type="email" placeholder="seu@email.com" required></label>
+        <label>Senha<input id="mobile-login-pass" type="password" placeholder="Sua senha" required></label>
+        <button class="mobile-submit-btn" type="submit" id="mobile-auth-submit" style="margin-top:16px;">Entrar</button>
+        <div style="text-align:center; margin-top: 15px; font-size: 12px;">
+          <a href="#" id="mobile-auth-toggle" style="color: #197a57; font-weight: 600; text-decoration: none;">Ainda não tem conta? Criar conta</a>
+        </div>
+      </form>
+    </div>
+  </section>
+
   <main class="mobile-app">
     <!-- INÍCIO / DASHBOARD -->
     <section class="mobile-view active" id="home-view">
       <header class="mobile-header">
         <div>
           <p id="mobile-current-date">SEXTA, 11 SET</p>
-          <h1>Olá, Clara <span>✦</span></h1>
+          <h1>Olá <span>✦</span></h1>
         </div>
-        <button class="profile-photo" id="open-profile-btn" title="Perfil & Definições">CM</button>
+        <button class="profile-photo" data-page="settings" title="Perfil & Definições">CM</button>
       </header>
 
       <article class="balance-card">
         <div class="balance-label">
           <span>Saldo disponível</span>
-          <button id="hide-balance" title="Ocultar/Mostrar Saldo">◉</button>
+          <button id="hide-balance" title="Ocultar/Mostrar Saldo"><i data-lucide="eye-off" style="width:16px; height:16px;"></i></button>
         </div>
         <strong id="balance-value">€ 4.280,50</strong>
         <div class="balance-footer">
@@ -36,10 +54,10 @@
       </article>
 
       <section class="quick-actions">
-        <button data-page="add"><span class="action-icon camera">⌁</span>Enviar<br>comprovativo</button>
-        <button id="quick-add-manual-btn"><span class="action-icon">＋</span>Novo<br>lançamento</button>
-        <button data-page="planning"><span class="action-icon">◎</span>Planear<br>mês</button>
-        <button data-page="accounts"><span class="action-icon">▣</span>Contas<br>bancárias</button>
+        <button data-page="add"><i data-lucide="camera" class="action-icon camera"></i>Enviar<br>comprovativo</button>
+        <button id="quick-add-manual-btn"><i data-lucide="plus" class="action-icon"></i>Novo<br>lançamento</button>
+        <button data-page="reports"><i data-lucide="bar-chart-2" class="action-icon"></i>Resumo<br>mensal</button>
+        <button data-page="accounts"><i data-lucide="landmark" class="action-icon"></i>Contas<br>bancárias</button>
       </section>
 
       <section class="section-heading">
@@ -87,57 +105,53 @@
       <div class="transactions-list" id="all-mobile-transactions"></div>
     </section>
 
-    <!-- ENVIAR COMPROVATIVO / ADICIONAR -->
+    <!-- ADICIONAR REGISTO -->
     <section class="mobile-view" id="add-view">
-      <header class="simple-header">
-        <button class="back" data-page="home">‹</button>
-        <div><p>REGISTO RÁPIDO</p><h1>Novo lançamento</h1></div>
+      <header class="add-header" style="display:flex; justify-content:space-between; align-items:flex-start; padding: 24px 20px 16px;">
+        <div>
+          <p style="font-size:10px; font-weight:600; color:#8ba398; letter-spacing:1px; margin-bottom:4px; text-transform:uppercase;">NOVO LANÇAMENTO</p>
+          <h1 style="font-size:20px; font-weight:700; color:#0a1d16; margin:0;">Adicionar movimento</h1>
+        </div>
+        <button class="close-add" data-page="home" style="background:none; border:none; font-size:22px; color:#8ba398; cursor:pointer; padding:0; margin-top:-4px;">×</button>
       </header>
 
-      <div class="add-choice-tabs">
-        <button class="choice-tab active" id="tab-ocr">📄 Via Comprovativo (OCR)</button>
-        <button class="choice-tab" id="tab-manual">✏️ Inserção Manual</button>
-      </div>
-
-      <div id="ocr-section">
-        <div class="add-hero">
-          <div class="sparkle">✦</div>
-          <h2>Envie. Nós tratamos do resto.</h2>
-          <p>Fotografe a fatura ou escolha um PDF. O OCR reconhece a entidade, o valor e a categoria automaticamente.</p>
-        </div>
-
-        <div class="upload-mobile" id="mobile-upload">
+      <div class="add-content" style="padding: 0 20px 24px;">
+        <!-- OCR Area -->
+        <div class="ocr-dropzone" id="mobile-upload-zone" style="border:1.5px dashed #c1dbcf; border-radius:12px; background:#fbfdfc; padding:24px; text-align:center; cursor:pointer; margin-bottom:24px;">
           <input type="file" id="mobile-file" accept="image/*,.pdf" hidden>
-          <span>⌁</span>
-          <b>Fotografar comprovativo</b>
-          <small>Use a câmara do telemóvel</small>
+          <i data-lucide="file-text" style="color: #c9bcf0; width: 24px; height: 24px; margin-bottom: 12px; display:inline-block;"></i>
+          <p id="mobile-upload-text" style="font-size:13px; color:#5a6d65; margin:0; line-height:1.4;">Arraste um PDF ou Imagem da fatura aqui,<br>ou clique para preencher com IA.</p>
         </div>
-        <button class="choose-file" id="choose-file">Escolher ficheiro ou PDF</button>
 
-        <div class="how-card">
-          <p>COMO FUNCIONA</p>
-          <div><b>1</b><span>Envia a foto ou PDF do talão</span></div>
-          <div><b>2</b><span>Reconhecemos o comerciante e valor</span></div>
-          <div><b>3</b><span>Entra automaticamente no seu relatório</span></div>
+        <!-- Separator -->
+        <div class="separator-text" style="display:flex; align-items:center; text-align:center; margin-bottom:24px;">
+          <div style="flex:1; border-bottom:1px solid #e8ecea;"></div>
+          <span style="padding:0 12px; font-size:11px; font-weight:600; color:#8ba398; letter-spacing:0.5px;">OU PREENCHA MANUALMENTE</span>
+          <div style="flex:1; border-bottom:1px solid #e8ecea;"></div>
         </div>
-      </div>
 
-      <div id="manual-section" style="display:none; padding-top:15px;">
-        <form class="mobile-form" id="mobile-direct-form">
-          <label>Descrição
-            <input required id="manual-desc" placeholder="Ex.: Continente, Uber, Aluguer">
+        <!-- Manual Form -->
+        <form class="mobile-add-form" id="mobile-direct-form" style="display:flex; flex-direction:column; gap:16px;">
+          <label style="display:flex; flex-direction:column; font-size:12px; font-weight:600; color:#5a6d65;">
+            Descrição
+            <input required id="manual-desc" placeholder="Ex.: Mercado do bairro" style="margin-top:6px; padding:12px; border:1px solid #d4e3dc; border-radius:8px; font-size:15px; color:#0a1d16; outline:none;">
           </label>
-          <label>Valor (€)
-            <input required id="manual-amount" type="number" step="0.01" placeholder="0,00">
-          </label>
-          <label>Tipo
-            <select id="manual-kind">
-              <option value="expense">Despesa</option>
-              <option value="income">Receita</option>
-            </select>
-          </label>
-          <label>Categoria
-            <select id="manual-cat">
+          <div class="form-row" style="display:flex; gap:12px;">
+            <label style="display:flex; flex-direction:column; font-size:12px; font-weight:600; color:#5a6d65; flex:1;">
+              Valor (€)
+              <input required id="manual-amount" type="number" step="0.01" placeholder="0,00" style="margin-top:6px; padding:12px; border:1px solid #d4e3dc; border-radius:8px; font-size:15px; color:#0a1d16; outline:none;">
+            </label>
+            <label style="display:flex; flex-direction:column; font-size:12px; font-weight:600; color:#5a6d65; flex:1;">
+              Tipo
+              <select id="manual-kind" style="margin-top:6px; padding:12px; border:1px solid #d4e3dc; border-radius:8px; font-size:15px; color:#0a1d16; outline:none; background-color:#fff;">
+                <option value="expense">Despesa</option>
+                <option value="income">Receita</option>
+              </select>
+            </label>
+          </div>
+          <label style="display:flex; flex-direction:column; font-size:12px; font-weight:600; color:#5a6d65;">
+            Categoria
+            <select id="manual-cat" style="margin-top:6px; padding:12px; border:1px solid #d4e3dc; border-radius:8px; font-size:15px; color:#0a1d16; outline:none; background-color:#fff;">
               <option>Alimentação</option>
               <option>Casa</option>
               <option>Transportes</option>
@@ -145,7 +159,10 @@
               <option>Outros</option>
             </select>
           </label>
-          <button class="mobile-submit-btn" type="submit">Guardar Lançamento</button>
+
+          <p class="add-note" style="font-size:10px; color:#8ba398; text-align:center; line-height:1.4; margin:4px 0 8px;">* Faturas em moeda estrangeira são convertidas automaticamente usando a cotação oficial do dia da compra.</p>
+
+          <button type="submit" style="background:#197a57; color:#fff; border:none; padding:14px; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer;">Guardar lançamento</button>
         </form>
       </div>
     </section>
@@ -181,20 +198,41 @@
     <!-- RELATÓRIOS -->
     <section class="mobile-view" id="reports-view">
       <header class="simple-header">
-        <div><p>RELATÓRIOS</p><h1>Finanças em foco</h1></div>
-        <button class="round-button" id="mobile-export-btn" title="Exportar PDF">⇩</button>
+        <div><p>RELATÓRIOS</p><h1>Uma visão clara das suas finanças</h1></div>
+        <button class="round-button" id="mobile-export-btn" title="Exportar PDF"><i data-lucide="download" style="width:16px; height:16px;"></i></button>
       </header>
       <article class="report-highlight">
-        <span>✦</span>
-        <p>INSIGHT DE SETEMBRO</p>
-        <h2 id="mobile-insight-title">A alimentação é a sua maior despesa este mês.</h2>
-        <small id="mobile-insight-desc">Representa 29% das despesas — € 120 acima do habitual.</small>
-        <button data-page="transactions">Ver movimentos ›</button>
+        <i data-lucide="sparkles" style="display:inline-block; width:20px; height:20px;"></i>
+        <p>INSIGHT DO MÊS</p>
+        <h2 id="mobile-insight-title">A alimentação representa 29% das suas despesas.</h2>
+        <small id="mobile-insight-desc">É a sua maior categoria este mês, € 120 acima do habitual.</small>
+        <button data-page="transactions">Ver detalhes ›</button>
       </article>
       <div class="mobile-report-cards">
-        <article><span>▤</span><div><h3>Resumo mensal</h3><p>Receitas, despesas e saldo atual.</p></div><b>›</b></article>
-        <article><span class="pink">◔</span><div><h3>Lançamentos</h3><p>Histórico sincronizado com a API.</p></div><b>›</b></article>
-        <article><span class="sky">◎</span><div><h3>Categorias</h3><p>Análise de hábitos de consumo.</p></div><b>›</b></article>
+        <article id="mob-resumo-card">
+          <div class="card-header">
+            <i data-lucide="bar-chart-2"></i><div><h3>Resumo mensal</h3><p>Receitas, despesas e saldo de setembro.</p></div><b class="chevron">›</b>
+          </div>
+          <div class="accordion-content">
+            <div class="report-stats">
+              <div><small>Receitas</small><b id="mob-rep-income">€ 0,00</b></div>
+              <div><small>Despesas</small><b id="mob-rep-expenses">€ 0,00</b></div>
+              <div><small>Saldo</small><b id="mob-rep-savings">€ 0,00</b></div>
+            </div>
+          </div>
+        </article>
+        <article id="mob-taxa-card">
+          <div class="card-header">
+            <i data-lucide="pie-chart" class="pink"></i><div><h3>Comparativo mensal</h3><p>Compare os últimos 6 meses.</p></div><b class="chevron">›</b>
+          </div>
+          <div class="accordion-content">
+            <div class="report-stats">
+              <div><small>Receitas (6m)</small><b id="mob-rep-6m-inc">€ 0,00</b></div>
+              <div><small>Despesas (6m)</small><b id="mob-rep-6m-exp">€ 0,00</b></div>
+              <div><small>Balanço</small><b id="mob-rep-6m-bal">€ 0,00</b></div>
+            </div>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -202,7 +240,7 @@
     <section class="mobile-view" id="accounts-view">
       <header class="simple-header">
         <div><p>OPEN BANKING</p><h1>Contas bancárias</h1></div>
-        <button class="round-button" id="open-bank-modal-btn" title="Ligar banco">＋</button>
+        <button class="round-button" id="open-bank-modal-btn" title="Ligar banco"><i data-lucide="plus" style="width:16px; height:16px;"></i></button>
       </header>
       <article class="mobile-bank-card">
         <div class="mobile-bank-top">
@@ -226,14 +264,57 @@
       </div>
     </section>
 
+    <section class="mobile-view" id="settings-view">
+      <header class="simple-header">
+        <button class="back" data-page="home">‹</button>
+        <div><p>PERFIL</p><h1>Definições</h1></div>
+      </header>
+      <div style="padding: 20px;">
+        <form id="mobile-profile-form" style="display: flex; flex-direction: column; gap: 16px;">
+          <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;">
+            Nome
+            <input type="text" id="mobile-profile-name" required style="margin-top:6px;padding:12px;border:1px solid #d4e3dc;border-radius:8px;font-size:16px;background:#f9fbfa;">
+          </label>
+          <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;">
+            Email <span style="font-size:10px;color:#8ba398;font-weight:400;">(Não é possível alterar nesta versão)</span>
+            <input type="email" id="mobile-profile-email" readonly style="margin-top:6px;padding:12px;border:1px solid #d4e3dc;border-radius:8px;font-size:16px;background:#edf3f0;color:#8ba398;">
+          </label>
+          <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;">
+            Meta Mensal de Poupança (€)
+            <input type="number" id="mobile-profile-savings" step="0.01" placeholder="Ex: 500.00" style="margin-top:6px;padding:12px;border:1px solid #d4e3dc;border-radius:8px;font-size:16px;">
+          </label>
+          <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;">
+            Nova Password <span style="font-size:10px;color:#8ba398;font-weight:400;">(Deixe em branco para manter a atual)</span>
+            <input type="password" id="mobile-profile-password" placeholder="••••••••" style="margin-top:6px;padding:12px;border:1px solid #d4e3dc;border-radius:8px;font-size:16px;">
+          </label>
+          <button type="submit" class="mobile-submit-btn" style="margin-top: 10px;">Guardar Alterações</button>
+          <p id="mobile-profile-msg" style="margin:0;font-size:12px;text-align:center;height:16px;color:#197a57;"></p>
+        </form>
+        <button id="mobile-logout-btn" class="mobile-secondary-btn" style="width: 100%; margin-top: 24px; color: #bd654f; border-color: #fbebe5; background: #fffcfb;">Terminar Sessão</button>
+      </div>
+    </section>
+
     <!-- BOTTOM NAV -->
     <nav class="bottom-nav">
-      <button class="active" data-page="home"><span>⌂</span>Início</button>
-      <button data-page="transactions"><span>↕</span>Movimentos</button>
-      <button class="add-nav" data-page="add"><span>＋</span></button>
-      <button data-page="planning"><span>◎</span>Plano</button>
-      <button data-page="reports"><span>▤</span>Relatórios</button>
-      <button data-page="accounts"><span>▣</span>Contas</button>
+      <button class="active" data-page="home" title="Início">
+        <i data-lucide="home"></i>
+        <span>Início</span>
+      </button>
+      <button data-page="transactions" title="Movimentos">
+        <i data-lucide="arrow-up-down"></i>
+        <span>Mov.</span>
+      </button>
+      <button class="add-nav" data-page="add" title="Novo Lançamento">
+        <i data-lucide="plus"></i>
+      </button>
+      <button data-page="reports" title="Relatórios">
+        <i data-lucide="bar-chart-2"></i>
+        <span>Relat.</span>
+      </button>
+      <button data-page="settings" title="Perfil">
+        <i data-lucide="user"></i>
+        <span>Perfil</span>
+      </button>
     </nav>
   </main>
 
@@ -242,7 +323,7 @@
     <div class="mobile-modal-card">
       <button class="mobile-modal-close" id="close-entry-modal">×</button>
       <p class="mono-label">NOVO LANÇAMENTO</p>
-       atmospheric <h2>Adicionar movimento</h2>
+      <h2>Adicionar movimento</h2>
       <form id="mobile-entry-form">
         <label>Descrição
           <input required name="description" placeholder="Ex.: Supermercado, Aluguer">
@@ -267,6 +348,48 @@
         </label>
         <button class="mobile-submit-btn" type="submit">Guardar Lançamento</button>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VER DETALHES -->
+  <div class="mobile-modal-backdrop" id="mobile-view-modal">
+    <div class="mobile-modal-card">
+      <button class="mobile-modal-close" id="close-view-modal">✕</button>
+      <p class="mono-label">DETALHES DO MOVIMENTO</p>
+      <h2 id="mobile-view-desc" style="margin-bottom: 8px;"></h2>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e8ecea;">
+        <span style="font-size: 24px; font-weight: 700; color: #10261f;" id="mobile-view-amount"></span>
+        <span style="font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 12px; background: #f2f7f5; color: #5a6d65;" id="mobile-view-kind"></span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+        <div>
+          <small style="display: block; font-size: 11px; color: #8a9993; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Data e Hora</small>
+          <strong style="font-size: 14px; color: #244238;" id="mobile-view-date"></strong>
+        </div>
+        <div>
+          <small style="display: block; font-size: 11px; color: #8a9993; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Categoria</small>
+          <strong style="font-size: 14px; color: #244238;" id="mobile-view-cat"></strong>
+        </div>
+        <div>
+          <small style="display: block; font-size: 11px; color: #8a9993; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Origem</small>
+          <strong style="font-size: 14px; color: #244238;" id="mobile-view-source"></strong>
+        </div>
+        <div>
+          <small style="display: block; font-size: 11px; color: #8a9993; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Estado</small>
+          <strong style="font-size: 14px; color: #244238;" id="mobile-view-status"></strong>
+        </div>
+      </div>
+
+      <div id="mobile-view-file-container" style="display: none; margin-top: 16px;">
+        <small style="display: block; font-size: 11px; color: #8a9993; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Comprovativo Anexado</small>
+        <img id="mobile-view-image" style="width: 100%; border-radius: 8px; border: 1px solid #e8ecea; display: none;" />
+        <a id="mobile-view-pdf" target="_blank" style="display: none; align-items: center; justify-content: center; gap: 8px; background: #f2f7f5; color: #1d5140; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;">
+          <i data-lucide="file-text" style="width: 18px; height: 18px;"></i>
+          Ver PDF Anexado
+        </a>
+      </div>
     </div>
   </div>
 
@@ -332,7 +455,7 @@
       <div class="profile-header-modal">
         <div class="profile-photo big">CM</div>
         <div>
-          <h3>Clara Martins</h3>
+          <h3>Carregando...</h3>
           <small>Plano Essencial · WhatsApp Conectado</small>
         </div>
       </div>
@@ -344,7 +467,8 @@
   </div>
 
   <div class="mobile-toast" id="mobile-toast">Comprovativo recebido. Vamos analisar os dados.</div>
-  <script src="api.js"></script>
-  <script src="mobile.js"></script>
+  <script src="api.js?v=6"></script>
+  <script src="dialog.js?v=6"></script>
+  <script src="mobile.js?v=6"></script>
 </body>
 </html>

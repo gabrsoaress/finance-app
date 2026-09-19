@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Finance App — Gestão pelo WhatsApp</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <script>
     (function() {
       var p = new URLSearchParams(window.location.search);
@@ -19,68 +20,140 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body class="auth-lock">
+  <section class="login-screen" id="login-screen">
+    <form class="login-card" id="login-form">
+      <p class="section-label" id="auth-label">ACESSO</p>
+      <h1 id="auth-title">Entrar no Finance App</h1>
+      <label id="auth-name-label" style="display:none;">Nome<input id="login-name" type="text" placeholder="Seu nome"></label>
+      <label>Email<input id="login-email" type="email" placeholder="seu@email.com" required></label>
+      <label>Senha<input id="login-pass" type="password" placeholder="Sua senha" required></label>
+      <button class="new-entry" type="submit" id="auth-submit">Entrar</button>
+      <div style="text-align:center; margin-top: 15px; font-size: 12px;">
+        <a href="#" id="auth-toggle" style="color: #197a57; font-weight: 600; text-decoration: none;">Ainda não tem conta? Criar conta</a>
+      </div>
+    </form>
+  </section>
   <div class="shell">
     <aside class="sidebar">
       <a class="brand" href="#">Finance App</a>
       <nav>
-        <button class="nav-item active" data-view="dashboard"><span>▦</span>Visão geral</button>
-        <button class="nav-item" data-view="transactions"><span>↕</span>Lançamentos</button>
-        <button class="nav-item" data-view="planning"><span>◎</span>Planeamento</button>
-        <button class="nav-item" data-view="reports"><span>▤</span>Relatórios</button>
-        <button class="nav-item" data-view="accounts"><span>▣</span>Contas bancárias</button>
+        <button class="nav-item active" data-view="dashboard"><i data-lucide="layout-dashboard"></i>Visão geral</button>
+        <button class="nav-item" data-view="transactions"><i data-lucide="arrow-up-down"></i>Lançamentos</button>
+        <button class="nav-item" data-view="reports"><i data-lucide="bar-chart-2"></i>Relatórios</button>
+        <button class="nav-item" data-view="accounts"><i data-lucide="landmark"></i>Contas bancárias</button>
       </nav>
       <div class="sidebar-bottom">
-        <a class="nav-item" href="/mobile.html" style="text-decoration:none;"><span class="wa-mini">📱</span>Versão Mobile</a>
-        <button class="nav-item" data-view="whatsapp"><span class="wa-mini">⌕</span>WhatsApp</button>
-        <button class="nav-item"><span>⚙</span>Definições</button>
-        <div class="profile"><div class="avatar">CM</div><div><strong>Clara Martins</strong><small>Plano Essencial</small></div><span>⋮</span></div>
+        <a class="nav-item" href="/mobile.html" style="text-decoration:none;"><i data-lucide="smartphone" class="wa-mini"></i>Versão Mobile</a>
+        <button class="nav-item" data-view="whatsapp"><i data-lucide="message-circle" class="wa-mini"></i>WhatsApp</button>
+        <button class="nav-item" data-view="settings"><i data-lucide="settings"></i>Definições</button>
+        <div class="profile"><div class="avatar">--</div><div><strong>Carregando...</strong><small>Plano Essencial</small></div><i data-lucide="log-out" id="logout-btn" style="cursor:pointer;" title="Terminar Sessão"></i></div>
       </div>
     </aside>
 
     <main>
-      <header><div><p class="eyebrow">SEXTA-FEIRA, 11 DE SETEMBRO</p><h1 id="page-title">Bom dia, Clara <span>✦</span></h1></div><div class="header-actions"><button class="icon-button">⌕</button><button class="icon-button notification">♧</button></div></header>
+      <header><div><p class="eyebrow">A CARREGAR...</p><h1 id="page-title">Bom dia <span>✦</span></h1></div></header>
 
       <section class="view active" id="dashboard">
         <div class="overview-row">
-          <div><p class="section-label">VISÃO GERAL</p><h2>Setembro em movimento</h2></div>
-          <button class="period">Setembro 2026 <span>⌄</span></button>
+          <div><p class="section-label">VISÃO GERAL</p><h2 id="dashboard-month-title">Setembro em movimento</h2></div>
+          <select class="period" id="dashboard-period" style="appearance: none; -webkit-appearance: none; background: #fff; border: 1px solid #e8ecea; padding: 6px 30px 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #0a1d16; cursor: pointer; outline: none; background-image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%230a1d16\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"6 9 12 15 18 9\"></polyline></svg>'); background-repeat: no-repeat; background-position: right 8px center;">
+            <option value="2026-08">Agosto 2026</option>
+            <option value="2026-09" selected>Setembro 2026</option>
+            <option value="2026-10">Outubro 2026</option>
+          </select>
         </div>
         <div class="cards">
-          <article class="metric-card balance"><div class="card-top"><span>Saldo disponível</span><button>•••</button></div><strong>€ 4.280,50</strong><p><i></i> +€ 320,40 <span>vs. mês anterior</span></p><div class="wave"></div></article>
-          <article class="metric-card"><div class="card-top"><span>Receitas</span><span class="metric-icon income">↗</span></div><strong>€ 3.850,00</strong><p class="positive">↑ 12,5% <span>vs. mês anterior</span></p><div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
-          <article class="metric-card"><div class="card-top"><span>Despesas</span><span class="metric-icon expense">↘</span></div><strong>€ 2.104,80</strong><p class="negative">↑ 4,2% <span>vs. mês anterior</span></p><div class="line-chart"><svg viewBox="0 0 280 55" preserveAspectRatio="none"><polyline points="0,44 34,38 68,41 102,18 137,31 171,22 205,35 240,15 280,8" fill="none" stroke="#EF9274" stroke-width="3"/></svg></div></article>
-          <article class="metric-card"><div class="card-top"><span>Poupança este mês</span><span class="metric-icon save">♧</span></div><strong>€ 1.745,20</strong><p class="goal-line"><b></b><span>70% da meta de € 2.500</span></p><div class="progress"><i></i></div></article>
+          <article class="metric-card balance"><div class="card-top"><span>Saldo disponível</span><button>•••</button></div><strong>---</strong><p><i></i> --- <span>vs. mês anterior</span></p><div class="wave"></div></article>
+          <article class="metric-card"><div class="card-top"><span>Receitas</span><span class="metric-icon income">↗</span></div><strong>---</strong><p class="positive">--- <span>vs. mês anterior</span></p><div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+          <article class="metric-card"><div class="card-top"><span>Despesas</span><span class="metric-icon expense">↘</span></div><strong>---</strong><p class="negative">--- <span>vs. mês anterior</span></p><div class="line-chart"><canvas id="expenseLineChart" style="width:100%; height:55px;"></canvas></div></article>
+          <article class="metric-card"><div class="card-top"><span>Poupança este mês</span><span class="metric-icon save">♧</span></div><strong>---</strong><p class="goal-line"><b></b><span>A calcular...</span></p><div class="progress"><i></i></div></article>
         </div>
         <div class="content-grid">
-          <article class="panel cashflow"><div class="panel-head"><div><p class="section-label">FLUXO DE CAIXA</p><h3>Entradas e saídas</h3></div><button class="more">•••</button></div><div class="chart-legend"><span><i class="legend income-dot"></i>Receitas</span><span><i class="legend expense-dot"></i>Despesas</span><button>Semanal⌄</button></div><div class="big-chart" aria-label="Gráfico de fluxo de caixa"><div class="y-axis"><span>€ 4k</span><span>€ 3k</span><span>€ 2k</span><span>€ 1k</span><span>€ 0</span></div><svg viewBox="0 0 660 230" preserveAspectRatio="none"><defs><linearGradient id="green-fill" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#8ed8bd" stop-opacity=".45"/><stop offset="1" stop-color="#8ed8bd" stop-opacity="0"/></linearGradient></defs><g class="gridlines"><path d="M0 16H660M0 65H660M0 114H660M0 163H660M0 212H660"/></g><path d="M0 170 C40 154 60 126 95 135 S154 113 185 122 S245 59 276 74 S330 101 365 82 S415 94 455 62 S518 82 550 43 S610 66 660 18 L660 212 L0 212Z" fill="url(#green-fill)"/><path d="M0 170 C40 154 60 126 95 135 S154 113 185 122 S245 59 276 74 S330 101 365 82 S415 94 455 62 S518 82 550 43 S610 66 660 18" fill="none" stroke="#197A57" stroke-width="3"/><path d="M0 188 C55 177 70 188 104 164 S160 177 193 159 S255 176 285 145 S340 165 375 153 S434 170 467 137 S522 156 558 125 S611 141 660 109" fill="none" stroke="#EF9274" stroke-width="3"/></svg><div class="x-axis"><span>01 Set</span><span>08 Set</span><span>15 Set</span><span>22 Set</span><span>29 Set</span></div></div></article>
-          <article class="panel expenses"><div class="panel-head"><div><p class="section-label">DESPESAS POR CATEGORIA</p><h3>Para onde vai o dinheiro?</h3></div><button class="more">•••</button></div><div class="donut-wrap"><div class="donut"><div>€ 2.104<small>total</small></div></div><ul><li><i class="food"></i><span>Alimentação</span><b>€ 620</b></li><li><i class="home"></i><span>Casa</span><b>€ 540</b></li><li><i class="move"></i><span>Transportes</span><b>€ 310</b></li><li><i class="other"></i><span>Outros</span><b>€ 635</b></li></ul></div></article>
+          <article class="panel cashflow"><div class="panel-head"><div><p class="section-label">FLUXO DE CAIXA</p><h3>Entradas e saídas</h3></div><button class="more">•••</button></div><div class="chart-legend"><span><i class="legend income-dot"></i>Receitas</span><span><i class="legend expense-dot"></i>Despesas</span><select id="cashflow-filter" class="chart-filter"><option value="daily">Diário</option><option value="weekly">Semanal</option><option value="monthly">Mensal</option></select></div><div class="big-chart" aria-label="Gráfico de fluxo de caixa"><canvas id="cashflowChart" style="width:100%; height:230px;"></canvas></div></article>
+          <article class="panel expenses"><div class="panel-head"><div><p class="section-label">DESPESAS POR CATEGORIA</p><h3>Para onde vai o dinheiro?</h3></div><button class="more">•••</button></div><div class="donut-wrap"><div class="donut"><div>---<small>total</small></div></div><ul></ul></div></article>
         </div>
         <article class="bank-strip"><div class="bank-mark">▣</div><div><p class="section-label">OPEN BANKING</p><h3>Ligue uma conta para importar movimentos automaticamente.</h3><p>O utilizador autentica-se no banco e escolhe o que quer partilhar.</p></div><button class="new-entry" data-view="accounts">Ligar banco</button></article>
         <article class="panel recent"><div class="panel-head"><div><p class="section-label">LANÇAMENTOS RECENTES</p><h3>Chegaram pelo WhatsApp</h3></div><button class="link-button" data-view="transactions">Ver todos →</button></div><div class="transaction-table" id="recent-transactions"></div></article>
       </section>
 
-      <section class="view" id="transactions"><div class="overview-row"><div><p class="section-label">LANÇAMENTOS</p><h2>Todos os movimentos</h2></div><button class="new-entry" id="new-entry-alt">+ Novo lançamento</button></div><article class="panel"><div class="filter-row"><button class="filter active">Todos</button><button class="filter">Receitas</button><button class="filter">Despesas</button><div></div><button class="filter">Setembro 2026⌄</button></div><div class="transaction-table full" id="all-transactions"></div></article></section>
+      <section class="view" id="transactions"><div class="overview-row"><div><p class="section-label">LANÇAMENTOS</p><h2>Todos os movimentos</h2></div><button class="new-entry" id="new-entry-alt">+ Novo lançamento</button></div><article class="panel"><div class="filter-row"><button class="filter active" data-kind="all">Todos</button><button class="filter" data-kind="income">Receitas</button><button class="filter" data-kind="expense">Despesas</button><div></div><select class="period" id="transactions-period" style="appearance: none; -webkit-appearance: none; background: #fff; border: 1px solid #e8ecea; padding: 6px 30px 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #0a1d16; cursor: pointer; outline: none; background-image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%230a1d16\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"6 9 12 15 18 9\"></polyline></svg>'); background-repeat: no-repeat; background-position: right 8px center;"><option value="2026-08">Agosto 2026</option><option value="2026-09" selected>Setembro 2026</option><option value="2026-10">Outubro 2026</option></select></div><div class="transaction-table full" id="all-transactions"></div></article></section>
 
-      <section class="view" id="planning"><div class="overview-row"><div><p class="section-label">PLANEAMENTO</p><h2>O seu plano para setembro</h2></div><button class="period">Setembro 2026 <span>⌄</span></button></div><div class="planning-hero"><div><span class="pill">EM DIA</span><h2>Está a caminho da sua meta.</h2><p>Se mantiver o ritmo atual, pode poupar mais € 245 este mês.</p><button class="light-button">Ver projeção →</button></div><div class="goal-ring"><strong>70%</strong><span>da meta mensal</span></div></div><article class="panel budget"><div class="panel-head"><div><p class="section-label">ORÇAMENTO POR CATEGORIA</p><h3>Limites do mês</h3></div><button class="link-button">Editar orçamento</button></div><div class="budget-list"><div><span>Alimentação</span><b>€ 620 <small>de € 750</small></b><i><em style="width:83%"></em></i></div><div><span>Casa</span><b>€ 540 <small>de € 600</small></b><i><em style="width:90%"></em></i></div><div><span>Transportes</span><b>€ 310 <small>de € 400</small></b><i><em style="width:77%"></em></i></div><div><span>Lazer</span><b>€ 180 <small>de € 350</small></b><i><em style="width:51%"></em></i></div></div></article></section>
-
-      <section class="view" id="reports"><div class="overview-row"><div><p class="section-label">RELATÓRIOS</p><h2>Uma visão clara das suas finanças</h2></div><button class="new-entry">⇩ Exportar PDF</button></div><div class="report-grid"><article class="panel report-card"><span class="report-icon">▤</span><h3>Resumo mensal</h3><p>Receitas, despesas e saldo de setembro.</p><button>Gerar relatório →</button></article><article class="panel report-card"><span class="report-icon peach">◔</span><h3>Comparativo mensal</h3><p>Compare os últimos 6 meses.</p><button>Gerar relatório →</button></article><article class="panel report-card"><span class="report-icon blue">◎</span><h3>Planeamento</h3><p>Projeção e evolução das suas metas.</p><button>Gerar relatório →</button></article></div><article class="panel insight"><span>✦</span><div><p class="section-label">INSIGHT DO MÊS</p><h3>A alimentação representa 29% das suas despesas.</h3><p>É a sua maior categoria este mês, € 120 acima do habitual.</p></div><button class="link-button">Ver detalhes →</button></article></section>
+      <section class="view" id="reports"><div class="overview-row"><div><p class="section-label">RELATÓRIOS</p><h2>Uma visão clara das suas finanças</h2></div><button class="new-entry">⇩ Exportar PDF</button></div><div class="report-grid"><article class="panel report-card"><span class="report-icon">▤</span><h3>Resumo mensal</h3><p>Receitas, despesas e saldo de setembro.</p><button>Gerar relatório →</button></article><article class="panel report-card"><span class="report-icon peach">◔</span><h3>Comparativo mensal</h3><p>Compare os últimos 6 meses.</p><button>Gerar relatório →</button></article></div><article class="panel insight"><span>✦</span><div><p class="section-label">INSIGHT DO MÊS</p><h3>A alimentação representa 29% das suas despesas.</h3><p>É a sua maior categoria este mês, € 120 acima do habitual.</p></div><button class="link-button">Ver detalhes →</button></article></section>
 
       <section class="view" id="accounts"><div class="overview-row"><div><p class="section-label">CONTAS BANCÁRIAS</p><h2>A sua conta bancária</h2></div><button class="outline-button">+ Ligar outra conta</button></div><article class="linked-bank-card"><div class="linked-bank-top"><div class="bank-badge">B</div><div><p>CONTA À ORDEM</p><h3>Banco de demonstração</h3><span>•••• 0812</span></div><button class="more">•••</button></div><div class="linked-bank-balance"><span>Saldo disponível</span><strong>€ 4.280,50</strong></div><div class="linked-bank-footer"><span><i></i> Dados sincronizados em 11 set. 2026, 10:28</span><button>Ver movimentos →</button></div></article><div class="account-stats"><article><span class="account-stat-icon green">↕</span><div><small>MOVIMENTOS ESTE MÊS</small><b>28</b><p>16 despesas e 12 receitas</p></div></article><article><span class="account-stat-icon blue">◷</span><div><small>PRÓXIMA SINCRONIZAÇÃO</small><b>Automática</b><p>Atualização periódica da conta</p></div></article><article><span class="account-stat-icon peach">◉</span><div><small>CONSENTIMENTO VÁLIDO ATÉ</small><b>09 dez. 2026</b><p>Renovar antes desta data</p></div></article></div><article class="panel access-panel"><div class="access-panel-copy"><p class="section-label">ACESSO AUTORIZADO</p><h3>Saldo e movimentos</h3><p>Esta aplicação pode consultar os dados da conta para organizar receitas, despesas e relatórios. Não pode iniciar pagamentos.</p></div><div class="access-controls"><button class="outline-button">Gerir permissões</button><button class="text-danger" id="revoke-access">Desligar conta</button></div></article><article class="security-note"><span>⌑</span><p><b>As credenciais bancárias nunca passam pela aplicação.</b> A autenticação ocorre diretamente no banco. Pode desligar a conta e revogar o acesso quando quiser.</p></article></section>
       <template id="accounts-setup-template"><div class="overview-row"><div><p class="section-label">CONTAS BANCÁRIAS</p><h2>Ligue o seu banco</h2></div></div><article class="panel bank-empty"><span class="bank-empty-icon">▣</span><h3>Ainda não tem contas ligadas.</h3><p>Ao ligar uma conta, os seus movimentos entram no painel automaticamente. Pode continuar a enviar comprovativos pelo WhatsApp quando preferir.</p><button class="new-entry">Ligar uma conta bancária</button></article><div class="connection-steps"><article><span>1</span><div><h3>Escolha o banco</h3><p>Seleciona o banco onde tem a conta.</p></div></article><article><span>2</span><div><h3>Autorize no banco</h3><p>A autenticação acontece no ambiente do banco.</p></div></article><article><span>3</span><div><h3>Escolha o acesso</h3><p>Autoriza saldo e movimentos — sem pagamentos.</p></div></article></div><article class="security-note"><span>⌑</span><p><b>As credenciais bancárias nunca passam pela aplicação.</b> A ligação usa um fornecedor Open Banking autorizado e pode ser revogada a qualquer momento.</p></article></template>
 
       <section class="view" id="whatsapp"><div class="overview-row"><div><p class="section-label">INTEGRAÇÃO</p><h2>Central WhatsApp</h2></div></div><div class="whatsapp-layout"><article class="panel phone"><div class="phone-top"><span>‹</span><div class="wa-avatar">F</div><div><strong>Finance App</strong><small>exemplo de conversa</small></div><span class="phone-menu">⋮</span></div><div class="chat"><div class="chat-date">EXEMPLO</div><div class="message bot">Olá, Clara! Envie uma foto ou PDF de um comprovativo e eu trato do lançamento. <small>09:41 ✓✓</small></div><div class="message user"> <span class="file-icon">▧</span><div><b>recibo-continente.pdf</b><small>PDF · 184 KB</small></div><time>10:28</time></div><div class="message bot success">✓ Registei uma despesa de <b>€ 42,65</b> em Alimentação. Está correto? <div class="message-buttons"><button>✓ Sim, guardar</button><button>Editar</button></div><small>10:28</small></div><div class="chat-input"><input type="text" id="wa-text-input" placeholder="Escreva uma mensagem..." style="border:none;background:transparent;outline:none;flex:1;font-size:14px;padding:0 8px;"><button type="button" id="wa-send-btn" style="border:none;background:transparent;cursor:pointer;font-size:16px;">➤</button></div></article><article class="panel integration"><p class="section-label">COMO FUNCIONA</p><h3>O WhatsApp vira a sua porta de entrada financeira.</h3><ol><li><span>1</span><div><b>Envie um comprovativo</b><p>Foto, screenshot ou PDF pelo WhatsApp.</p></div></li><li><span>2</span><div><b>A Finance App lê e sugere</b><p>Valor, data, entidade e categoria são identificados.</p></div></li><li><span>3</span><div><b>Confirme em um toque</b><p>O lançamento entra no painel e atualiza os relatórios.</p></div></li></ol><div class="upload-zone" id="upload-zone"><input type="file" id="file-input" accept="image/*,.pdf" hidden><span>⌁</span><b>Simular envio de comprovativo</b><small>Imagem ou PDF</small></div></article></div></section>
+      <section class="view" id="settings">
+        <div class="overview-row">
+          <div><p class="section-label">PERFIL</p><h2>As suas definições</h2></div>
+        </div>
+        <article class="panel" style="max-width: 600px; margin: 0 auto;">
+          <form id="profile-form" style="display: flex; flex-direction: column; gap: 16px;">
+            <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;">
+              Nome
+              <input type="text" id="profile-name" required style="margin-top:6px;padding:10px;border:1px solid #d4e3dc;border-radius:8px;font-size:14px;background:#f9fbfa;">
+            </label>
+            <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;">
+              Email <span style="font-size:10px;color:#8ba398;font-weight:400;">(Não é possível alterar nesta versão)</span>
+              <input type="email" id="profile-email" readonly style="margin-top:6px;padding:10px;border:1px solid #d4e3dc;border-radius:8px;font-size:14px;background:#edf3f0;color:#8ba398;">
+            </label>
+            <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;">
+              Meta Mensal de Poupança (€)
+              <input type="number" id="profile-savings-goal" step="0.01" placeholder="Ex: 500.00" style="margin-top:6px;padding:10px;border:1px solid #d4e3dc;border-radius:8px;font-size:14px;background:#f9fbfa;">
+            </label>
+            <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;">
+              Nova Password <span style="font-size:10px;color:#8ba398;font-weight:400;">(Deixe em branco para manter a atual)</span>
+              <input type="password" id="profile-password" placeholder="••••••••" style="margin-top:6px;padding:10px;border:1px solid #d4e3dc;border-radius:8px;font-size:14px;">
+            </label>
+            <button type="submit" class="new-entry" style="margin-top: 10px; padding: 12px;">Guardar Alterações</button>
+            <p id="profile-msg" style="margin:0;font-size:12px;text-align:center;height:16px;color:#197a57;"></p>
+          </form>
+        </article>
+      </section>
     </main>
   </div>
-  <div class="modal-backdrop" id="modal"><form class="entry-modal" id="entry-form"><button type="button" class="close" id="close-modal">×</button><p class="section-label">NOVO LANÇAMENTO</p><h2>Adicionar movimento</h2><label>Descrição<input required name="description" placeholder="Ex.: Mercado do bairro"></label><label>Valor (€)<input required name="amount" type="number" step="0.01" placeholder="0,00"></label><label>Tipo<select name="type"><option value="expense">Despesa</option><option value="income">Receita</option></select></label><label>Categoria<select name="category"><option>Alimentação</option><option>Casa</option><option>Transportes</option><option>Lazer</option><option>Outros</option></select></label><button class="new-entry" type="submit">Guardar lançamento</button></form></div>
+  <div class="modal-backdrop" id="modal">
+    <div class="entry-modal" style="display:flex;flex-direction:column;max-width:550px;width:100%;background:#fff;border-radius:16px;padding:28px;position:relative;margin:auto;">
+      <button type="button" class="close" id="close-modal" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:#91a09b;">&times;</button>
+      <p class="section-label">NOVO LANÇAMENTO</p>
+      <h2 style="margin-bottom: 20px;">Adicionar movimento</h2>
+      
+      <div id="ai-upload-section" style="display:block; text-align:center; padding: 25px 20px; border: 2px dashed #d4e3dc; border-radius: 12px; background: #f9fbfa; margin-bottom: 20px; cursor: pointer; transition: all 0.2s ease;">
+        <span style="font-size: 24px; display: block; margin-bottom: 10px;">📄</span>
+        <p style="font-size: 13px; color: #5a6d65; margin-bottom: 10px; pointer-events: none;">Arraste um PDF ou Imagem da fatura aqui,<br>ou clique para preencher com IA.</p>
+        <input type="file" id="ai-file-input" accept="image/*,.pdf" style="display:none;">
+        <div id="ai-loading" style="display:none; margin-top: 15px; font-size: 13px; font-weight: 600; color: #197a57;">A analisar documento com IA... ✧</div>
+      </div>
+
+      <div style="display:flex; align-items:center; text-align:center; margin: 10px 0 20px; color:#91a09b; font-size:12px; font-weight:600;">
+        <hr style="flex:1; border:none; border-top:1px solid #e8ecea;">
+        <span style="padding: 0 15px;">OU PREENCHA MANUALMENTE</span>
+        <hr style="flex:1; border:none; border-top:1px solid #e8ecea;">
+      </div>
+
+      <form id="entry-form" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+        <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;grid-column: 1 / -1;">Descrição<input required name="description" placeholder="Ex.: Mercado do bairro" style="margin-top:6px;padding:10px;border:1px solid #d4e3dc;border-radius:8px;font-size:14px;"></label>
+        <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;">Valor (€)<input required name="amount" type="number" step="0.01" placeholder="0,00" style="margin-top:6px;padding:10px;border:1px solid #d4e3dc;border-radius:8px;font-size:14px;"></label>
+        <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;">Tipo<select name="type" style="margin-top:6px;padding:10px;border:1px solid #d4e3dc;border-radius:8px;font-size:14px;background:#fff;"><option value="expense">Despesa</option><option value="income">Receita</option><option value="transfer">Transferência</option></select></label>
+        <label style="display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#5a6d65;grid-column: 1 / -1;">Categoria<select name="category" style="margin-top:6px;padding:10px;border:1px solid #d4e3dc;border-radius:8px;font-size:14px;background:#fff;"><option>Alimentação</option><option>Casa</option><option>Transportes</option><option>Lazer</option><option>Outros</option></select></label>
+        <div style="grid-column: 1 / -1; font-size: 11px; color: #91a09b; text-align: center; margin-top: 4px; font-weight: normal;">
+          * Faturas em moeda estrangeira são convertidas automaticamente usando a cotação oficial do dia da compra.
+        </div>
+        <button class="new-entry" type="submit" style="margin-top:10px;grid-column: 1 / -1;padding:14px;">Guardar lançamento</button>
+      </form>
+    </div>
+  </div>
   <div class="modal-backdrop" id="bank-modal"><div class="entry-modal bank-modal"><button type="button" class="close" id="close-bank-modal">×</button><p class="section-label">OPEN BANKING</p><h2>Ligar conta bancária</h2><p class="modal-copy">Será encaminhado para o ambiente seguro do seu banco para autorizar a leitura de movimentos.</p><label style="display:block;margin:12px 0;text-align:left;font-size:13px;font-weight:600;color:var(--text-muted);">Banco<select id="bank-select" style="width:100%;padding:10px;margin-top:4px;border:1px solid #ddd;border-radius:8px;font-size:14px;"><option value="Caixa Geral de Depósitos">Caixa Geral de Depósitos</option><option value="Millennium BCP">Millennium BCP</option><option value="Santander Totta">Santander Totta</option><option value="Novo Banco">Novo Banco</option><option value="ActivoBank">ActivoBank</option><option value="Revolut">Revolut</option></select></label><div class="access-summary"><b>Permissões solicitadas:</b><span>✓ Consulta de saldo em tempo real</span><span>✓ Importação de movimentos</span><span>− Não permite realizar transferências ou pagamentos</span></div><button class="new-entry" id="continue-bank">Autorizar e Ligar Banco</button></div></div>
 
   <div class="modal-backdrop" id="edit-modal"><form class="entry-modal" id="edit-form"><button type="button" class="close" id="close-edit-modal">×</button><p class="section-label">EDITAR LANÇAMENTO</p><h2>Atualizar movimento</h2><input type="hidden" id="edit-tx-id"><label>Descrição<input required id="edit-description" placeholder="Ex.: Mercado do bairro"></label><label>Valor (€)<input required id="edit-amount" type="number" step="0.01" placeholder="0,00"></label><label>Tipo<select id="edit-type"><option value="expense">Despesa</option><option value="income">Receita</option></select></label><label>Categoria<select id="edit-category"><option>Alimentação</option><option>Casa</option><option>Transportes</option><option>Lazer</option><option>Outros</option></select></label><button class="new-entry" type="submit">Guardar alterações</button></form></div>
 
   <div class="toast" id="toast">Comprovativo analisado — lançamento pronto para confirmar.</div>
-  <script src="api.js"></script>
-  <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="api.js?v=6"></script>
+  <script src="dialog.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 </body>
 
 </html>
-

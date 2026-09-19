@@ -103,7 +103,7 @@ function openEditModal(id) {
 
 async function confirmDelete(id) {
   document.querySelectorAll('.tx-menu.open').forEach(m => m.classList.remove('open'));
-  if (!confirm('Tem a certeza que quer excluir este lançamento?')) return;
+  if (!(await window.CustomDialog.confirm('Tem a certeza que quer excluir este lançamento?'))) return;
   try {
     await ApiService.deleteTransaction(id);
     await loadAllData();
@@ -139,9 +139,32 @@ document.getElementById('edit-form')?.addEventListener('submit', async e => {
   }
 });
 
-async function renderDashboard() {
+async function renderDashboard(year = 2026, month = 9) {
   try {
-    const [dash, txs] = await Promise.all([ApiService.getDashboard(), ApiService.getTransactions()]);
+    let [dash, txs] = await Promise.all([ApiService.getDashboard(year, month), ApiService.getTransactions()]);
+    if (dash && (dash.error === 'Não autorizado.' || dash.status === 401)) {
+      if (localStorage.getItem('auth_user')) {
+        localStorage.removeItem('auth_user');
+        document.body.classList.add('auth-lock');
+        showToast('Sessão expirada. Por favor inicie sessão novamente.');
+      }
+      return;
+    }
+    if (!Array.isArray(txs)) txs = [];
+    
+    // Filtra as transações pelo mês e ano selecionados
+    txs = txs.filter(t => {
+      if (!t.occurredOn) return false;
+      const d = new Date(t.occurredOn);
+      return d.getFullYear() === year && (d.getMonth() + 1) === month;
+    });
+
+    if (!dash || dash.error) dash = { income: 0, expenses: 0, savings: 0, expensesByCategory: [] };
+    
+    const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const titleElem = document.getElementById('dashboard-month-title');
+    if (titleElem) titleElem.textContent = `${monthNames[month - 1]} em movimento`;
+    
     const cards = document.querySelectorAll('.metric-card');
     if (cards[0]) {
       cards[0].querySelector('strong').textContent = money(dash.savings);
@@ -149,15 +172,15 @@ async function renderDashboard() {
     }
     if (cards[1]) {
       cards[1].querySelector('strong').textContent = money(dash.income);
-      cards[1].querySelector('p').innerHTML = `<span>${txs.filter(t => t.kind === 'income').length} receitas reais</span>`;
+      cards[1].querySelector('p').innerHTML = `<span>${txs.filter(t => t.kind === 'income').length} receitas</span>`;
       const bars = cards[1].querySelector('.mini-bars');
       if (bars) bars.innerHTML = byDayBars(txs, 'income').map(h => `<i style="height:${h}px"></i>`).join('');
     }
     if (cards[2]) {
       cards[2].querySelector('strong').textContent = money(dash.expenses);
-      cards[2].querySelector('p').innerHTML = `<span>${txs.filter(t => t.kind === 'expense').length} despesas reais</span>`;
-      const line = cards[2].querySelector('.line-chart svg');
-      if (line) line.innerHTML = `<polyline points="${sparkPoints(txs, 'expense', 280, 55)}" fill="none" stroke="#EF9274" stroke-width="3"/>`;
+      cards[2].querySelector('p').innerHTML = `<span>${txs.filter(t => t.kind === 'expense').length} despesas</span>`;
+      const ctx = cards[2].querySelector('#expenseLineChart');
+      if (ctx) renderExpenseChart(ctx, txs);
     }
     if (cards[3]) {
       cards[3].querySelector('strong').textContent = money(dash.savings);
@@ -173,33 +196,242 @@ async function renderDashboard() {
   }
 }
 
-function dailyTotals(txs, kind) {
-  const days = Array.from({ length: 30 }, () => 0);
+function exactDailyTotals(txs) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const todaysTxs = txs.filter(t => new Date(t.occurredOn) >= today);
+  const timeMap = new Map();
+  
+  todaysTxs.forEach(t => {
+    const d = new Date(t.occurredOn);
+    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    if (!timeMap.has(timeStr)) timeMap.set(timeStr, { income: 0, expense: 0 });
+    timeMap.get(timeStr)[t.kind] += Number(t.amount) || 0;
+  });
+
+  const sortedTimes = Array.from(timeMap.keys()).sort();
+  if (sortedTimes.length === 0) {
+    return { labels: ['00:00', '23:59'], incomes: [0, 0], expenses: [0, 0] };
+  }
+
+  if (sortedTimes[0] !== '00:00') sortedTimes.unshift('00:00');
+  if (sortedTimes[sortedTimes.length - 1] !== '23:59') sortedTimes.push('23:59');
+
+  const incomes = [];
+  const expenses = [];
+  sortedTimes.forEach(timeStr => {
+    const data = timeMap.get(timeStr) || { income: 0, expense: 0 };
+    incomes.push(data.income);
+    expenses.push(data.expense);
+  });
+
+  return { labels: sortedTimes, incomes, expenses };
+}
+
+function weeklyTotals(txs, kind) {
+  const days = Array.from({ length: 7 }, () => 0);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   txs.filter(t => t.kind === kind).forEach(t => {
-    const d = new Date(t.occurredOn).getDate();
-    if (d >= 1 && d <= 30) days[d - 1] += Number(t.amount) || 0;
+    const d = new Date(t.occurredOn);
+    const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffTime = today - date;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+    if (diffDays >= 0 && diffDays < 7) {
+      days[6 - diffDays] += Number(t.amount) || 0;
+    }
   });
   return days;
 }
 
-function sparkPoints(txs, kind, w, h) {
-  const vals = dailyTotals(txs, kind);
-  const max = Math.max(...vals, 1);
-  return vals.map((v, i) => `${(i / 29) * w},${h - (v / max) * (h - 8) - 4}`).join(' ');
+function monthlyTotals(txs, kind) {
+  const days = Array.from({ length: 30 }, () => 0);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  txs.filter(t => t.kind === kind).forEach(t => {
+    const d = new Date(t.occurredOn);
+    const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffTime = today - date;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+    if (diffDays >= 0 && diffDays < 30) {
+      days[29 - diffDays] += Number(t.amount) || 0;
+    }
+  });
+  return days;
 }
 
 function byDayBars(txs, kind) {
-  const vals = dailyTotals(txs, kind).slice(0, 7);
+  const vals = weeklyTotals(txs, kind);
   const max = Math.max(...vals, 1);
   return vals.map(v => Math.max(4, Math.round((v / max) * 28)));
 }
 
+let expenseChartInstance = null;
+function renderExpenseChart(canvas, txs) {
+  const vals = monthlyTotals(txs, 'expense');
+  const now = new Date();
+  const labels = Array.from({length: 30}, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (29 - i));
+    return `${d.getDate()}/${d.getMonth()+1}`;
+  });
+  
+  if (expenseChartInstance) {
+    expenseChartInstance.data.datasets[0].data = vals;
+    expenseChartInstance.update();
+    return;
+  }
+  
+  expenseChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        borderColor: '#EF9274',
+        borderWidth: 2,
+        tension: 0.4, // Smooth curve
+        pointRadius: 0,
+        fill: true,
+        backgroundColor: (ctx) => {
+          const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 55);
+          gradient.addColorStop(0, 'rgba(239, 146, 116, 0.2)');
+          gradient.addColorStop(1, 'rgba(239, 146, 116, 0)');
+          return gradient;
+        }
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false, min: 0 } }
+    }
+  });
+}
+
+let cashflowChartInstance = null;
+let currentCashflowFilter = 'weekly';
+
 function renderCashflow(txs) {
-  const svg = document.querySelector('.big-chart svg');
-  if (!svg) return;
-  svg.innerHTML = `<g class="gridlines"><path d="M0 16H660M0 65H660M0 114H660M0 163H660M0 212H660"/></g>
-    <polyline points="${sparkPoints(txs, 'income', 660, 212)}" fill="none" stroke="#197A57" stroke-width="3"/>
-    <polyline points="${sparkPoints(txs, 'expense', 660, 212)}" fill="none" stroke="#EF9274" stroke-width="3"/>`;
+  const canvas = document.getElementById('cashflowChart');
+  if (!canvas) return;
+  
+  const filterEl = document.getElementById('cashflow-filter');
+  if (filterEl) {
+    currentCashflowFilter = filterEl.value;
+    filterEl.onchange = () => renderCashflow(txs);
+  }
+
+  let incomes, expenses, labels;
+  if (currentCashflowFilter === 'monthly') {
+    incomes = monthlyTotals(txs, 'income');
+    expenses = monthlyTotals(txs, 'expense');
+    const now = new Date();
+    labels = Array.from({length: 30}, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (29 - i));
+      return `${d.getDate()}/${d.getMonth()+1}`;
+    });
+  } else if (currentCashflowFilter === 'weekly') {
+    incomes = weeklyTotals(txs, 'income');
+    expenses = weeklyTotals(txs, 'expense');
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const now = new Date();
+    labels = Array.from({length: 7}, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - i));
+      return `${d.getDate()} ${monthNames[d.getMonth()]}`;
+    });
+  } else {
+    const exactData = exactDailyTotals(txs);
+    incomes = exactData.incomes;
+    expenses = exactData.expenses;
+    labels = exactData.labels;
+  }
+
+  if (cashflowChartInstance) {
+    cashflowChartInstance.data.labels = labels;
+    cashflowChartInstance.data.datasets[0].data = incomes;
+    cashflowChartInstance.data.datasets[1].data = expenses;
+    cashflowChartInstance.update();
+    return;
+  }
+  
+  cashflowChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Receitas',
+          data: incomes,
+          borderColor: '#197A57',
+          borderWidth: 3,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          fill: true,
+          backgroundColor: (ctx) => {
+            const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 230);
+            gradient.addColorStop(0, 'rgba(25, 122, 87, 0.25)');
+            gradient.addColorStop(1, 'rgba(25, 122, 87, 0)');
+            return gradient;
+          }
+        },
+        {
+          label: 'Despesas',
+          data: expenses,
+          borderColor: '#EF9274',
+          borderWidth: 3,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#fff',
+          titleColor: '#0a1d16',
+          bodyColor: '#4f5e58',
+          borderColor: '#e8ecea',
+          borderWidth: 1,
+          padding: 12,
+          usePointStyle: true,
+          callbacks: {
+            label: (context) => ` ${context.dataset.label}: € ${context.parsed.y.toFixed(2)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false, drawBorder: false },
+          ticks: {
+            color: '#8a9993',
+            font: { family: "'DM Mono', monospace", size: 11 },
+            maxTicksLimit: 5
+          }
+        },
+        y: {
+          grid: { color: '#e8ecea', drawBorder: false },
+          ticks: {
+            color: '#8a9993',
+            font: { family: "'DM Mono', monospace", size: 11 },
+            callback: (val) => `€ ${(val/1000)}k`
+          },
+          min: 0
+        }
+      }
+    }
+  });
 }
 
 function renderCategoryChart(items) {
@@ -215,10 +447,12 @@ function renderCategoryChart(items) {
     return s;
   }).join(',');
   wrap.innerHTML = `<div class="donut" style="background:conic-gradient(${stops || '#edf1ef 0 100%'})"><div>${money(total)}<small>total</small></div></div>
-    <ul>${items.map((item, i) => `<li><i style="background:${colors[i % colors.length]}"></i><span>${item.name}</span><b>${money(item.amount)}</b></li>`).join('') || '<li><span>Sem despesas</span><b>€ 0,00</b></li>'}</ul>`;
+    <ul>${items.map((item, i) => `<li><i style="background:${colors[i % colors.length]}"></i><span>${item.name}</span><b>${money(item.amount)}</b></li>`).join('') || '<li><i style="background:transparent"></i><span>Sem despesas</span><b>€ 0,00</b></li>'}</ul>`;
 }
 
-async function renderTransactions() {
+let currentTxFilterKind = 'all';
+
+async function renderTransactions(year = 2026, month = 9) {
   try {
     currentTransactions = await ApiService.getTransactions();
     if (!Array.isArray(currentTransactions)) currentTransactions = [];
@@ -226,51 +460,106 @@ async function renderTransactions() {
     const allElem = document.querySelector('#all-transactions');
 
     if (recentElem) recentElem.innerHTML = currentTransactions.slice(0, 3).map(row).join('') || '<p style="color:#91a09b;font-size:11px;padding:12px 0">Sem lançamentos recentes.</p>';
-    if (allElem) allElem.innerHTML = currentTransactions.map(row).join('') || '<p style="color:#91a09b;font-size:11px;padding:12px 0">Ainda não tem lançamentos. Adicione o primeiro!</p>';
+    
+    // Aplicar filtros
+    let filteredTxs = currentTransactions.filter(t => {
+      if (!t.occurredOn) return false;
+      const d = new Date(t.occurredOn);
+      const isSameMonth = d.getFullYear() === year && (d.getMonth() + 1) === month;
+      const isSameKind = currentTxFilterKind === 'all' || t.kind === currentTxFilterKind;
+      return isSameMonth && isSameKind;
+    });
+
+    if (allElem) allElem.innerHTML = filteredTxs.map(row).join('') || '<p style="color:#91a09b;font-size:11px;padding:12px 0;text-align:center;">Sem lançamentos para este filtro.</p>';
   } catch (err) {
     console.error('Erro ao carregar transações:', err);
   }
 }
 
-async function renderPlanning() {
-  try {
-    const [budgets, dash] = await Promise.all([ApiService.getPlanning(), ApiService.getDashboard()]);
-    const totalLimit = budgets.reduce((s, b) => s + Number(b.limit || 0), 0);
-    const totalSpent = budgets.reduce((s, b) => s + Number(b.spent || 0), 0);
-    const pctTotal = totalLimit ? Math.min(100, Math.round((totalSpent / totalLimit) * 100)) : 0;
-    const hero = document.querySelector('.planning-hero');
-    if (hero) {
-      hero.innerHTML = `<div><span class="pill">${dash.savings >= 0 ? 'SALDO POSITIVO' : 'SALDO NEGATIVO'}</span><h2>${money(dash.savings)} de saldo este mês.</h2><p>Orçamento usado: ${money(totalSpent)} de ${money(totalLimit)}.</p></div><div class="goal-ring"><strong>${pctTotal}%</strong><span>do orçamento</span></div>`;
-    }
-    const listElem = document.querySelector('.budget-list');
-    if (listElem && Array.isArray(budgets)) {
-      listElem.innerHTML = budgets.map(b => {
-        const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
-        return `<div>
-          <span>${b.category}</span>
-          <b>€ ${b.spent.toLocaleString('pt-PT', { minimumFractionDigits: 2 })} <small>de € ${b.limit.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</small></b>
-          <i><em style="width:${pct}%"></em></i>
-        </div>`;
-      }).join('');
-    }
-  } catch (err) {
-    console.error('Erro ao carregar orçamentos:', err);
-  }
-}
-
 async function renderReports() {
-  const [dash, txs] = await Promise.all([ApiService.getDashboard(), ApiService.getTransactions()]);
+  let [dash, txs] = await Promise.all([ApiService.getDashboard(), ApiService.getTransactions()]);
+  if (!Array.isArray(txs)) txs = [];
+  if (!dash || dash.error) dash = { income: 0, expenses: 0, savings: 0, expensesByCategory: [] };
+  
   const reports = document.querySelector('#reports');
   if (!reports) return;
-  const biggest = (dash.expensesByCategory || [])[0];
+  
+  const expenses = txs.filter(t => t.kind === 'expense');
+  const biggestCategory = (dash.expensesByCategory || [])[0];
+  
+  // Calculations
+  const savingsRate = dash.income > 0 ? (dash.savings / dash.income) * 100 : 0;
+  const biggestExpense = expenses.length > 0 ? expenses.reduce((max, t) => Number(t.amount) > Number(max.amount) ? t : max, expenses[0]) : null;
+  const currentDay = new Date().getDate();
+  const dailyAverage = dash.expenses / currentDay;
+  
+  // HTML generation
   reports.querySelector('.report-grid').innerHTML = `
     <article class="panel report-card"><span class="report-icon">▤</span><h3>Resumo mensal</h3><p>${money(dash.income)} em receitas, ${money(dash.expenses)} em despesas e ${money(dash.savings)} de saldo.</p></article>
-    <article class="panel report-card"><span class="report-icon peach">◔</span><h3>Lançamentos</h3><p>${txs.length} movimentos reais no banco de dados.</p></article>
-    <article class="panel report-card"><span class="report-icon blue">◎</span><h3>Categorias</h3><p>${(dash.expensesByCategory || []).length} categorias com despesas registadas.</p></article>`;
-  const insight = reports.querySelector('.insight');
-  if (insight) insight.innerHTML = biggest
-    ? `<span>✦</span><div><p class="section-label">INSIGHT DO MÊS</p><h3>${biggest.name} é a maior despesa.</h3><p>${money(biggest.amount)} de ${money(dash.expenses)} em despesas reais.</p></div>`
-    : `<span>✦</span><div><p class="section-label">INSIGHT DO MÊS</p><h3>Sem despesas registadas.</h3><p>Os relatórios serão preenchidos quando houver lançamentos.</p></div>`;
+    <article class="panel report-card"><span class="report-icon peach">◔</span><h3>Taxa de Poupança</h3><p>Guardou <b>${savingsRate.toFixed(1)}%</b> do seu rendimento este mês.</p></article>
+    <article class="panel report-card"><span class="report-icon blue">◎</span><h3>Média Diária</h3><p>Está a gastar em média <b>${money(dailyAverage)}</b> por dia.</p></article>`;
+    
+  let insightsHTML = '';
+  
+  if (biggestCategory && dash.expenses > 0) {
+    const pct = ((biggestCategory.amount / dash.expenses) * 100).toFixed(1);
+    insightsHTML += `
+      <article class="panel insight" style="margin-bottom: 12px;">
+        <span>✦</span>
+        <div><p class="section-label">CATEGORIA DE MAIOR PESO</p>
+        <h3>${biggestCategory.name} representa ${pct}% das suas despesas.</h3>
+        <p>Totalizou ${money(biggestCategory.amount)}, sendo a área onde gasta mais recursos.</p></div>
+      </article>`;
+  }
+  
+  if (biggestExpense) {
+    insightsHTML += `
+      <article class="panel insight" style="margin-bottom: 12px;">
+        <span>✦</span>
+        <div><p class="section-label">MAIOR TRANSAÇÃO ÚNICA</p>
+        <h3>Gasto de ${money(biggestExpense.amount)} em ${biggestExpense.categoryName || 'Outros'}.</h3>
+        <p>A transação "${biggestExpense.description}" foi o seu maior movimento financeiro este mês.</p></div>
+      </article>`;
+  }
+  
+  if (savingsRate > 20) {
+    insightsHTML += `
+      <article class="panel insight" style="margin-bottom: 12px;">
+        <span>✦</span>
+        <div><p class="section-label">SAÚDE FINANCEIRA</p>
+        <h3>Excelente capacidade de poupança!</h3>
+        <p>Está a poupar mais de 20% do seu rendimento, o que é um indicador fantástico de saúde financeira.</p></div>
+      </article>`;
+  } else if (dash.income > 0 && savingsRate < 5) {
+    insightsHTML += `
+      <article class="panel insight" style="margin-bottom: 12px;">
+        <span>✦</span>
+        <div><p class="section-label">ALERTA FINANCEIRO</p>
+        <h3>A sua taxa de poupança está baixa.</h3>
+        <p>Recomendamos a revisão dos seus gastos não essenciais para tentar poupar pelo menos 10% a 20% do que ganha.</p></div>
+      </article>`;
+  }
+  
+  if (!insightsHTML) {
+    insightsHTML = `
+      <article class="panel insight">
+        <span>✦</span><div><p class="section-label">INSIGHT DO MÊS</p><h3>Sem dados suficientes.</h3><p>Continue a usar a aplicação para gerarmos análises financeiras.</p></div>
+      </article>`;
+  }
+  
+  // Substituir a tag .insight antiga por uma div wrapper para suportar múltiplos insights
+  let insightsContainer = reports.querySelector('#insights-container');
+  if (!insightsContainer) {
+    const oldInsight = reports.querySelector('.insight');
+    if (oldInsight) {
+      insightsContainer = document.createElement('div');
+      insightsContainer.id = 'insights-container';
+      oldInsight.parentNode.replaceChild(insightsContainer, oldInsight);
+    }
+  }
+  if (insightsContainer) {
+    insightsContainer.innerHTML = insightsHTML;
+  }
 }
 
 async function renderAccounts() {
@@ -279,12 +568,91 @@ async function renderAccounts() {
   accounts.innerHTML = `<article class="panel dev-placeholder"><p class="section-label">CONTAS BANCÁRIAS</p><h2>Em desenvolvimento...</h2></article>`;
 }
 
+async function renderSettings() {
+  const profileForm = document.getElementById('profile-form');
+  if (!profileForm) return;
+
+  try {
+    const profile = await ApiService.getProfile();
+    if (profile && !profile.error) {
+      document.getElementById('profile-name').value = profile.name || '';
+      document.getElementById('profile-email').value = profile.email || '';
+      if (profile.user && profile.user.user_metadata && profile.user.user_metadata.savings_goal) {
+        document.getElementById('profile-savings-goal').value = profile.user.user_metadata.savings_goal;
+      }
+    }
+  } catch (err) {
+    console.error('Erro ao carregar perfil', err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const profileForm = document.getElementById('profile-form');
+  if (profileForm) {
+    profileForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('profile-msg');
+      const name = document.getElementById('profile-name').value;
+      const password = document.getElementById('profile-password').value;
+      const savingsGoal = document.getElementById('profile-savings-goal').value;
+
+      try {
+        msg.textContent = 'A guardar...';
+        msg.style.color = '#197a57';
+        
+        const data = {};
+        if (name) data.name = name;
+        if (password) data.password = password;
+        if (savingsGoal) data.savings_goal = savingsGoal;
+
+        const res = await ApiService.updateProfile(data);
+        if (res.error) {
+          msg.textContent = res.error;
+          msg.style.color = 'red';
+        } else {
+          msg.textContent = 'Perfil atualizado com sucesso!';
+          document.getElementById('profile-password').value = '';
+          const authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+          if (res.user) {
+            authUser.name = res.user.name;
+            localStorage.setItem('auth_user', JSON.stringify(authUser));
+            document.querySelector('.profile strong').textContent = authUser.name;
+            const initials = authUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            document.querySelector('.profile .avatar').textContent = initials;
+            const pageTitle = document.getElementById('page-title');
+            if (pageTitle && pageTitle.textContent.includes('Bom dia')) {
+              pageTitle.innerHTML = `Bom dia, ${authUser.name.split(' ')[0]} <span>✦</span>`;
+            }
+          }
+          setTimeout(() => msg.textContent = '', 3000);
+        }
+      } catch (err) {
+        msg.textContent = 'Erro ao atualizar perfil.';
+        msg.style.color = 'red';
+      }
+    });
+  }
+});
+
 async function loadAllData() {
-  await renderDashboard();
-  await renderTransactions();
-  await renderPlanning();
+  const auth = localStorage.getItem('auth_user');
+  if (!auth) return;
+  
+  // Obter o valor atual do filtro se existir
+  const periodSelect = document.getElementById('dashboard-period');
+  let year = 2026;
+  let month = 9;
+  if (periodSelect && periodSelect.value) {
+    const [y, m] = periodSelect.value.split('-');
+    year = parseInt(y, 10);
+    month = parseInt(m, 10);
+  }
+
+  await renderDashboard(year, month);
+  await renderTransactions(year, month);
   await renderReports();
   await renderAccounts();
+  await renderSettings();
 }
 
 // Navegação de Visões (Views)
@@ -297,16 +665,64 @@ document.querySelectorAll('[data-view]').forEach(button => button.addEventListen
   
   const pageTitle = document.getElementById('page-title');
   if (pageTitle) {
-    pageTitle.textContent = target === 'dashboard' ? 'Bom dia, Clara ✦' : ({
-      transactions: 'Lançamentos',
-      planning: 'Planeamento',
-      reports: 'Relatórios',
-      whatsapp: 'WhatsApp',
-      accounts: 'Contas bancárias'
-    }[target]);
+    let dashboardTitle = 'Bom dia ✨';
+    try {
+      const authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+      if (authUser.name) dashboardTitle = `Bom dia, ${authUser.name.split(' ')[0]} <span>✦</span>`;
+    } catch(e) {}
+
+    if (target === 'dashboard') {
+      pageTitle.innerHTML = dashboardTitle;
+    } else {
+      pageTitle.textContent = {
+        transactions: 'Lançamentos',
+        planning: 'Planeamento',
+        reports: 'Relatórios',
+        whatsapp: 'WhatsApp',
+        accounts: 'Contas bancárias',
+        settings: 'Definições'
+      }[target] || '';
+    }
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }));
+
+document.addEventListener('DOMContentLoaded', () => {
+  const periodSelect = document.getElementById('dashboard-period');
+  if (periodSelect) {
+    periodSelect.addEventListener('change', async (e) => {
+      const [y, m] = e.target.value.split('-');
+      await renderDashboard(parseInt(y, 10), parseInt(m, 10));
+    });
+  }
+
+  // Filtros de transações
+  const txPeriodSelect = document.getElementById('transactions-period');
+  if (txPeriodSelect) {
+    txPeriodSelect.addEventListener('change', async (e) => {
+      const [y, m] = e.target.value.split('-');
+      await renderTransactions(parseInt(y, 10), parseInt(m, 10));
+    });
+  }
+
+  const txFilterButtons = document.querySelectorAll('#transactions .filter-row button.filter');
+  txFilterButtons.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      txFilterButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTxFilterKind = btn.dataset.kind || 'all';
+      
+      let year = 2026, month = 9;
+      if (txPeriodSelect && txPeriodSelect.value) {
+        const [y, m] = txPeriodSelect.value.split('-');
+        year = parseInt(y, 10);
+        month = parseInt(m, 10);
+      }
+      
+      await renderTransactions(year, month);
+    });
+  });
+});
 
 // Modais
 const modal = document.getElementById('modal');
@@ -314,6 +730,104 @@ const modal = document.getElementById('modal');
 const closeBtn = document.getElementById('close-modal');
 if (closeBtn) closeBtn.onclick = () => modal.classList.remove('show');
 modal?.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
+
+// AI Upload Logic in Modal
+const aiSection = document.getElementById('ai-upload-section');
+const entryForm = document.getElementById('entry-form');
+const aiFileInput = document.getElementById('ai-file-input');
+const aiLoading = document.getElementById('ai-loading');
+
+if (aiSection && entryForm && aiFileInput) {
+  // Drag and Drop events
+  aiSection.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    aiSection.style.borderColor = '#197a57';
+    aiSection.style.background = '#edf3f0';
+  });
+  aiSection.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    aiSection.style.borderColor = '#d4e3dc';
+    aiSection.style.background = '#f9fbfa';
+  });
+  aiSection.addEventListener('drop', (e) => {
+    e.preventDefault();
+    aiSection.style.borderColor = '#d4e3dc';
+    aiSection.style.background = '#f9fbfa';
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleAiFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  // Click file input
+  aiSection.addEventListener('click', (e) => {
+    if (e.target !== aiFileInput) {
+      aiFileInput.click();
+    }
+  });
+
+  aiFileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleAiFile(e.target.files[0]);
+    }
+  });
+
+  function handleAiFile(file) {
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      showToast('Apenas imagens e PDFs são suportados.');
+      return;
+    }
+    
+    aiLoading.style.display = 'block';
+    
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64Str = event.target.result;
+      
+      try {
+        const res = await fetch('/api/transactions/parse-ai', {
+          method: 'POST',
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            fileBase64: base64Str,
+            mimeType: file.type
+          })
+        });
+        
+        if (!res.ok) throw new Error('Erro ao processar');
+        const data = await res.json();
+        
+        // Preencher o formulário
+        if (data.amount) entryForm.elements['amount'].value = data.amount;
+        if (data.description) entryForm.elements['description'].value = data.description;
+        
+        const validKinds = ['expense', 'income', 'transfer'];
+        entryForm.elements['type'].value = (data.kind && validKinds.includes(data.kind.toLowerCase())) ? data.kind.toLowerCase() : 'expense';
+        
+        if (data.category) {
+          const catSelect = entryForm.elements['category'];
+          let optionFound = false;
+          Array.from(catSelect.options).forEach(opt => {
+            if (opt.text.toLowerCase() === data.category.toLowerCase()) {
+              catSelect.value = opt.value;
+              optionFound = true;
+            }
+          });
+          if (!optionFound) {
+            catSelect.value = 'Outros';
+          }
+        }
+        
+        showToast('Documento analisado com sucesso! Confirme os dados antes de guardar.');
+      } catch (err) {
+        showToast('Ocorreu um erro na IA ao ler o documento.');
+      } finally {
+        aiLoading.style.display = 'none';
+        aiFileInput.value = ''; // Reset
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+}
 
 // Submissão do Formulário de Lançamento (POST /api/transactions)
 document.getElementById('entry-form')?.addEventListener('submit', async e => {
@@ -410,11 +924,25 @@ document.getElementById('wa-text-input')?.addEventListener('keypress', e => { if
 
 
 function showToast(message) {
-  const toast = document.getElementById('toast');
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 3500);
+  let type = "info";
+  let title = "Informação";
+  const msgLower = message.toLowerCase();
+  
+  if (msgLower.includes('erro') || msgLower.includes('expirada') || msgLower.includes('falha')) {
+    type = "error"; title = "Erro";
+  } else if (msgLower.includes('sucesso') || msgLower.includes('atualizado') || msgLower.includes('excluído') || msgLower.includes('guardado') || msgLower.includes('analisado')) {
+    type = "success"; title = "Sucesso";
+  }
+  
+  if (window.CustomDialog && window.CustomDialog.toast) {
+    window.CustomDialog.toast(message, title, type);
+  } else {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3500);
+  }
 }
 
 // Open Banking Modal & Conexões Bancárias
@@ -458,7 +986,141 @@ if (new URLSearchParams(window.location.search).get('bank') === 'setup') {
 
 // Inicializa o carregamento de dados da API
 document.addEventListener('DOMContentLoaded', loadAllData);
-loadAllData();
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  loadAllData();
+}
 
 function renderCurrentDate(){const el=document.querySelector('.eyebrow');if(!el)return;const d=new Date();el.textContent=d.toLocaleDateString('pt-PT',{weekday:'long',day:'2-digit',month:'long'}).toUpperCase();}
 renderCurrentDate();document.addEventListener('DOMContentLoaded',renderCurrentDate);
+
+// Limpar utilizadores locais legados
+localStorage.removeItem('finance_app_users');
+
+// Gestão de Sessão & Login/Registo
+let isRegisterMode = false;
+const authToggle = document.getElementById('auth-toggle');
+const authLabel = document.getElementById('auth-label');
+const authTitle = document.getElementById('auth-title');
+const authSubmit = document.getElementById('auth-submit');
+const nameLabel = document.getElementById('auth-name-label');
+const nameInput = document.getElementById('login-name');
+
+if (authToggle) {
+  authToggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    isRegisterMode = !isRegisterMode;
+    if (isRegisterMode) {
+      authLabel.textContent = 'REGISTO';
+      authTitle.textContent = 'Criar uma conta';
+      authSubmit.textContent = 'Registar e Entrar';
+      authToggle.textContent = 'Já tem conta? Entrar';
+      nameLabel.style.display = 'block';
+      nameInput.required = true;
+    } else {
+      authLabel.textContent = 'ACESSO';
+      authTitle.textContent = 'Entrar no Finance App';
+      authSubmit.textContent = 'Entrar';
+      authToggle.textContent = 'Ainda não tem conta? Criar conta';
+      nameLabel.style.display = 'none';
+      nameInput.required = false;
+    }
+  });
+}
+
+const loginForm = document.getElementById('login-form');
+if (loginForm) {
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+    
+    try {
+      if (isRegisterMode) {
+        const name = nameInput.value;
+        if (!name) {
+          await window.CustomDialog.alert('Por favor, introduza o seu nome.');
+          return;
+        }
+        
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, pass })
+        });
+        
+        const data = await res.json();
+        if (res.ok) {
+          loginSuccess(data.user, data.token);
+        } else {
+          await window.CustomDialog.alert(data.error || 'Erro ao criar conta.');
+        }
+        
+      } else {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, pass })
+        });
+        
+        const data = await res.json();
+        if (res.ok) {
+          loginSuccess(data.user, data.token);
+        } else {
+          await window.CustomDialog.alert(data.error || 'Email ou senha incorretos.');
+        }
+      }
+    } catch (err) {
+      await window.CustomDialog.alert('Erro de comunicação com o servidor.');
+    }
+  });
+}
+
+function loginSuccess(user, token) {
+  document.body.classList.remove('auth-lock');
+  localStorage.setItem('auth_user', JSON.stringify({ name: user.name, token, id: user.id }));
+  
+  const profileElem = document.querySelector('.profile strong');
+  if (profileElem) profileElem.textContent = user.name;
+  
+  const pageTitle = document.getElementById('page-title');
+  if (pageTitle) pageTitle.innerHTML = `Bom dia, ${user.name.split(' ')[0]} <span>✦</span>`;
+  
+  showToast(`Sessão iniciada como ${user.name}.`);
+  loadAllData();
+}
+
+const savedAuthUserStr = localStorage.getItem('auth_user');
+if (savedAuthUserStr) {
+  try {
+    const savedAuthUser = JSON.parse(savedAuthUserStr);
+    document.body.classList.remove('auth-lock');
+    const profileElem = document.querySelector('.profile strong');
+    if (profileElem) profileElem.textContent = savedAuthUser.name;
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) pageTitle.innerHTML = `Bom dia, ${savedAuthUser.name.split(' ')[0]} <span>✦</span>`;
+  } catch (e) {
+    // legacy format or error
+    localStorage.removeItem('auth_user');
+  }
+}
+
+// Logout
+// Logout (usando event delegation pois o Lucide substitui o elemento no DOM)
+document.addEventListener('click', async (e) => {
+  const logoutBtn = e.target.closest('#logout-btn');
+  if (logoutBtn) {
+    if (await window.CustomDialog.confirm('Tem a certeza que deseja terminar a sessão?')) {
+      localStorage.removeItem('auth_user');
+      window.location.reload();
+    }
+  }
+});
+
+// Inicializar Lucide Icons
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+
+

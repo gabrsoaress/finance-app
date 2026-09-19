@@ -1,4 +1,12 @@
 {
+  "users": [
+    {
+      "id": "u-1789743054890",
+      "email": "ecleciesterlucasmoreira@gmail.com",
+      "pass": "lucas123",
+      "name": "Lucas"
+    }
+  ],
   "categories": [
     {
       "id": "cat-1",
