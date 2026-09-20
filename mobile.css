@@ -6,15 +6,23 @@
   --cream: #f7f8f4;
   --line: #e5ebe7;
   --peach: #ed9275;
+  --bg: #dde5e1;
 }
 * {
   box-sizing: border-box;
 }
-body {
+html, body {
   margin: 0;
-  background: #dde5e1;
-  font-family: Manrope, Arial, sans-serif;
+  padding: 0;
+  font-family: 'Manrope', -apple-system, sans-serif;
+  background: var(--bg);
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  height: 100%;
+  width: 100vw;
+  overscroll-behavior-y: none;
+  touch-action: manipulation;
 }
 .mobile-app {
   max-width: 430px;
@@ -828,7 +836,7 @@ body {
   border: 1px solid #d5e0da;
   border-radius: 8px;
   padding: 11px;
-  font: 12px Manrope;
+  font: 16px Manrope;
   color: var(--ink);
   background: #fbfdfc;
 }
@@ -910,7 +918,7 @@ body {
   border: 1px solid #d5e0da;
   border-radius: 8px;
   padding: 11px;
-  font: 12px Manrope;
+  font: 16px Manrope;
   color: var(--ink);
   width: 100%;
 }
