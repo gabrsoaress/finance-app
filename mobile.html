@@ -315,12 +315,30 @@
         <i data-lucide="bar-chart-2"></i>
         <span>Relat.</span>
       </button>
-      <button data-page="settings" title="Perfil">
-        <i data-lucide="user"></i>
-        <span>Perfil</span>
+      <button id="mobile-menu-btn" title="Menu">
+        <i data-lucide="menu"></i>
+        <span>Menu</span>
       </button>
     </nav>
   </main>
+
+  <!-- MODAL: MENU -->
+  <div class="mobile-modal-backdrop" id="mobile-menu-modal">
+    <div class="mobile-modal-card">
+      <button class="mobile-modal-close" id="close-menu-modal">×</button>
+      <p class="mono-label">MENU</p>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+        <button class="profile-action-btn" data-page="settings" id="menu-btn-profile" style="background: #f2f7f5; color: #1d5140; justify-content: flex-start; padding: 16px; font-weight: 600;">
+          <i data-lucide="user" style="width: 20px; margin-right: 12px;"></i>
+          Perfil e Definições
+        </button>
+        <button class="profile-action-btn" id="menu-btn-whatsapp" style="background: #25D366; color: #fff; justify-content: flex-start; padding: 16px; font-weight: 600;">
+          <i data-lucide="message-circle" style="width: 20px; margin-right: 12px;"></i>
+          Conectar WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL: NOVO LANÇAMENTO MANUAL -->
   <div class="mobile-modal-backdrop" id="mobile-entry-modal">

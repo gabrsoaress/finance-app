@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const Tesseract = require('tesseract.js');
 const { createClient } = require('@supabase/supabase-js');
 const { GoogleGenAI } = require('@google/genai');
 
@@ -42,51 +41,94 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Analisador de Texto OCR Real com Tesseract
-async function performRealOcr(fileBufferOrPath, fileNameHint = '') {
-  let text = '';
+// Memória para transações pendentes (aguardando confirmação via WhatsApp)
+const pendingTransactions = new Map();
+
+// Download de Media da Meta API
+async function downloadMetaMedia(mediaId) {
+  if (!WHATSAPP_TOKEN) return null;
   try {
-    if (typeof fileBufferOrPath === 'string' && fs.existsSync(fileBufferOrPath)) {
-      const result = await Tesseract.recognize(fileBufferOrPath, 'por+eng');
-      text = result.data.text || '';
-    } else if (Buffer.isBuffer(fileBufferOrPath)) {
-      const result = await Tesseract.recognize(fileBufferOrPath, 'por+eng');
-      text = result.data.text || '';
-    }
+    const urlRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
+      headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
+    });
+    const urlData = await urlRes.json();
+    if (!urlData.url) return null;
+    
+    const mediaRes = await fetch(urlData.url, {
+      headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
+    });
+    const arrayBuffer = await mediaRes.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch(e) {
+    console.error('Erro no download do media:', e);
+    return null;
+  }
+}
+
+// Leitura Inteligente de Faturas com Gemini Vision
+async function extractReceiptDataWithAI(buffer, mimeType) {
+  if (!ai || !buffer) {
+    return { detectedMerchant: 'Desconhecido (Sem IA)', detectedCategory: 'Outros', detectedAmount: 0 };
+  }
+  try {
+    const prompt = `Analise este comprovativo/fatura e extraia os dados estritamente no seguinte formato JSON, sem markdown ou backticks:
+{
+  "detectedMerchant": "Nome da Loja/Entidade",
+  "detectedCategory": "Alimentação" | "Casa" | "Transportes" | "Lazer" | "Outros",
+  "detectedAmount": 12.34
+}`;
+    const result = await ai.models.generateContent({
+      model: 'gemini-1.5-flash',
+      contents: [
+        { role: 'user', parts: [ { text: prompt }, { inlineData: { data: buffer.toString('base64'), mimeType } } ] }
+      ]
+    });
+    let text = result.text().trim();
+    if (text.startsWith('```json')) text = text.substring(7);
+    if (text.startsWith('```')) text = text.substring(3);
+    if (text.endsWith('```')) text = text.substring(0, text.length - 3);
+    const parsed = JSON.parse(text);
+    return {
+      detectedMerchant: parsed.detectedMerchant || 'Desconhecido',
+      detectedCategory: parsed.detectedCategory || 'Outros',
+      detectedAmount: parseFloat(parsed.detectedAmount) || 0
+    };
+  } catch(e) {
+    console.error('Erro na extração com Gemini:', e);
+    return { detectedMerchant: 'Erro IA', detectedCategory: 'Outros', detectedAmount: 0 };
+  }
+}
+
+async function sendMetaWhatsappInteractiveMessage(toPhone, textMessage, buttons) {
+  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_ID) {
+    console.log(`[Simulação Botões WhatsApp] Para ${toPhone}: ${textMessage} | Botões: ${buttons.map(b => b.title).join(', ')}`);
+    return false;
+  }
+  try {
+    const url = `https://graph.facebook.com/v19.0/${WHATSAPP_PHONE_ID}/messages`;
+    const actionButtons = buttons.map(b => ({ type: "reply", reply: { id: b.id, title: b.title } }));
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: toPhone,
+        type: 'interactive',
+        interactive: {
+          type: "button",
+          body: { text: textMessage },
+          action: { buttons: actionButtons }
+        }
+      })
+    });
+    return response.ok;
   } catch (err) {
-    console.log('Aviso OCR (usando heurística):', err.message);
+    console.error('Erro no envio interativo Meta WhatsApp API:', err);
+    return false;
   }
-
-  const combinedText = (text + ' ' + fileNameHint).toLowerCase();
-
-  let detectedMerchant = 'Comprovativo';
-  let detectedCategory = 'Alimentação';
-  let detectedAmount = 0;
-
-  if (combinedText.includes('continente') || combinedText.includes('pingo') || combinedText.includes('lidl') || combinedText.includes('mercadona') || combinedText.includes('auchan')) {
-    detectedMerchant = combinedText.includes('continente') ? 'Continente' : (combinedText.includes('lidl') ? 'Lidl' : 'Pingo Doce');
-    detectedCategory = 'Alimentação';
-  } else if (combinedText.includes('galp') || combinedText.includes('bp') || combinedText.includes('cp') || combinedText.includes('uber') || combinedText.includes('bolt')) {
-    detectedMerchant = combinedText.includes('galp') ? 'Galp Energia' : (combinedText.includes('cp') ? 'CP — Comboios' : 'Uber / Transportes');
-    detectedCategory = combinedText.includes('galp') ? 'Casa' : 'Transportes';
-  } else if (combinedText.includes('ikea') || combinedText.includes('leroy') || combinedText.includes('edp')) {
-    detectedMerchant = 'Casa & Utilidades';
-    detectedCategory = 'Casa';
-  } else if (combinedText.includes('netflix') || combinedText.includes('spotify') || combinedText.includes('cinema')) {
-    detectedMerchant = 'Subscrição / Lazer';
-    detectedCategory = 'Lazer';
-  }
-
-  const matches = text.match(/(?:total|eur|€|\bval\b)[\s:]*([0-9]+[.,][0-9]{2})/i) || combinedText.match(/([0-9]+[.,][0-9]{2})/);
-  if (matches && matches[1]) {
-    detectedAmount = parseFloat(matches[1].replace(',', '.'));
-  }
-
-  if (!detectedAmount || isNaN(detectedAmount)) {
-    detectedAmount = parseFloat((Math.random() * 45 + 12).toFixed(2));
-  }
-
-  return { detectedMerchant, detectedCategory, detectedAmount, rawOcrText: text };
 }
 
 // Envio de Mensagem Real para o WhatsApp via Meta Cloud API
@@ -606,7 +648,7 @@ app.post('/api/webhooks/whatsapp/attachments', authMiddleware, async (req, res) 
   const body = req.body;
   const fileName = body.fileName || 'recibo.pdf';
 
-  const ocrResult = await performRealOcr(null, fileName);
+  const ocrResult = await extractReceiptDataWithAI(null, 'image/jpeg');
 
   const attachment = {
     id: 'att-' + Date.now(),
@@ -650,7 +692,7 @@ app.post('/api/webhooks/whatsapp/attachments', authMiddleware, async (req, res) 
 app.post('/api/ocr-preview', authMiddleware, async (req, res) => {
   const body = req.body;
   const fileName = body.fileName || 'recibo.pdf';
-  const ocrResult = await performRealOcr(null, fileName);
+  const ocrResult = await extractReceiptDataWithAI(null, 'image/jpeg');
   res.status(200).json({
     detectedMerchant: ocrResult.detectedMerchant,
     detectedCategory: ocrResult.detectedCategory,
@@ -680,22 +722,127 @@ app.post('/api/webhooks/whatsapp', async (req, res) => {
     if (message) {
       const from = message.from;
       const msgType = message.type;
-
-      let replyText = "Recebi a sua mensagem no WhatsApp! Envie uma imagem ou PDF de fatura para registar. (Nota: Funcionalidade em atualização para o novo sistema).";
-
-      if (msgType === 'text') {
-        const userText = message.text?.body || '';
-        if (/olá|oi|boas|bom dia|boa tarde/i.test(userText)) {
-          replyText = "Olá! Sou o assistente do Fluxo. Pode enviar fotos de faturas ou comprovativos e eu registo o lançamento automaticamente.";
-        } else if (/saldo|resumo/i.test(userText)) {
-          replyText = "A consulta de saldo pelo WhatsApp está em manutenção. Por favor consulte o saldo na sua App Gestão.";
+      const userText = msgType === 'text' ? (message.text?.body || '').trim() : '';
+      
+      // 1. Process Connection Request
+      const linkMatch = userText.match(/^Ligar minha conta:\s*(.+)$/i);
+      if (linkMatch) {
+        const userId = linkMatch[1].trim();
+        const { data: userObj, error: userErr } = await supabase.auth.admin.getUserById(userId);
+        if (userErr || !userObj?.user) {
+          await sendMetaWhatsappMessage(from, "❌ Erro ao ligar conta: Utilizador não encontrado.");
+          return res.status(200).json({ status: 'received' });
         }
-      } else if (msgType === 'image' || msgType === 'document') {
-        const ocrResult = await performRealOcr(null, message.document?.filename || 'fatura.jpg');
-        replyText = `Recebi a despesa de € ${ocrResult.detectedAmount.toFixed(2).replace('.', ',')} em ${ocrResult.detectedCategory}. Note que não foi gravada na conta, esta funcionalidade está em atualização.`;
+        
+        const { error: updateErr } = await supabase.auth.admin.updateUserById(userId, {
+          user_metadata: { ...userObj.user.user_metadata, whatsapp_number: from }
+        });
+        
+        if (updateErr) {
+          await sendMetaWhatsappMessage(from, "❌ Erro ao ligar conta.");
+        } else {
+          await sendMetaWhatsappMessage(from, "✅ Conta ligada com sucesso! Já pode começar a enviar os seus comprovativos e consultar o seu saldo.");
+        }
+        return res.status(200).json({ status: 'received' });
       }
 
-      await sendMetaWhatsappMessage(from, replyText);
+      // 2. Identify existing user
+      let matchedUser = null;
+      const { data: listData, error: listErr } = await supabase.auth.admin.listUsers();
+      if (!listErr && listData?.users) {
+        matchedUser = listData.users.find(u => u.user_metadata?.whatsapp_number === from);
+      }
+      
+      if (!matchedUser) {
+        await sendMetaWhatsappMessage(from, "⚠️ Este número não está associado a nenhuma conta. Aceda à aplicação e clique em Menu > Conectar WhatsApp.");
+        return res.status(200).json({ status: 'received' });
+      }
+
+      // 3. User authenticated - Handle commands
+      let replyText = "Recebi a sua mensagem!";
+      const uid = matchedUser.id;
+
+      if (msgType === 'text') {
+        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+        const { data: txs } = await supabase.from('transactions')
+          .select('amount, kind, description, category_name')
+          .eq('user_id', uid)
+          .gte('occurred_on', startOfMonth);
+          
+        const txContext = JSON.stringify(txs || []);
+
+        const prompt = `Você é o assistente virtual financeiro do Finance App no WhatsApp. O usuário enviou a mensagem: "${userText}".
+Responda de forma humanizada, simpática e muito concisa.
+Contexto financeiro (transações deste mês): ${txContext}. (Apenas use se o usuário perguntar de saldo ou gastos, de resto aja normalmente).`;
+        
+        replyText = "Desculpe, não consegui processar a mensagem.";
+        if (ai) {
+          try {
+            const result = await ai.models.generateContent({ model: 'gemini-1.5-flash', contents: prompt });
+            replyText = result.text().trim();
+          } catch(e) {
+            console.error('Erro no Gemini AI:', e);
+            replyText = "Tive um problema de ligação à minha IA, mas o que precisar, pode dizer!";
+          }
+        }
+        await sendMetaWhatsappMessage(from, replyText);
+
+      } else if (msgType === 'image' || msgType === 'document') {
+        const mediaId = msgType === 'image' ? message.image?.id : message.document?.id;
+        const mimeType = msgType === 'image' ? message.image?.mime_type : message.document?.mime_type;
+        
+        await sendMetaWhatsappMessage(from, "A ler o seu comprovativo com Inteligência Artificial...");
+        
+        const buffer = await downloadMetaMedia(mediaId);
+        const ocrResult = await extractReceiptDataWithAI(buffer, mimeType);
+        
+        const txId = 'tx_' + Date.now();
+        pendingTransactions.set(txId, {
+          user_id: uid,
+          description: ocrResult.detectedMerchant,
+          amount: ocrResult.detectedAmount,
+          kind: 'expense',
+          category_name: ocrResult.detectedCategory,
+          source: 'WhatsApp OCR Real'
+        });
+
+        replyText = `✅ Identifiquei uma despesa de *€ ${ocrResult.detectedAmount.toFixed(2).replace('.', ',')}* em *${ocrResult.detectedCategory}* (${ocrResult.detectedMerchant}). Está correto?`;
+        
+        await sendMetaWhatsappInteractiveMessage(from, replyText, [
+          { id: `confirm_${txId}`, title: "✓ Sim, guardar" },
+          { id: `edit_${txId}`, title: "Editar" }
+        ]);
+        
+      } else if (msgType === 'interactive') {
+        const buttonReply = message.interactive?.button_reply;
+        if (buttonReply) {
+          const actionId = buttonReply.id;
+          if (actionId.startsWith('confirm_')) {
+            const txId = actionId.replace('confirm_', '');
+            const pendingTx = pendingTransactions.get(txId);
+            
+            if (pendingTx) {
+              const { error: insErr } = await supabase.from('transactions').insert({
+                ...pendingTx,
+                occurred_on: new Date().toISOString()
+              });
+              
+              if (!insErr) {
+                await sendMetaWhatsappMessage(from, "✅ Lançamento guardado com sucesso no seu painel!");
+                pendingTransactions.delete(txId);
+              } else {
+                await sendMetaWhatsappMessage(from, "❌ Ocorreu um erro ao guardar a despesa na sua conta.");
+              }
+            } else {
+              await sendMetaWhatsappMessage(from, "⚠️ Esta transação já expirou ou foi guardada.");
+            }
+          } else if (actionId.startsWith('edit_')) {
+             const txId = actionId.replace('edit_', '');
+             pendingTransactions.delete(txId);
+             await sendMetaWhatsappMessage(from, "Transação cancelada. Por favor aceda à aplicação para inserir manualmente ou envie uma foto mais nítida.");
+          }
+        }
+      }
     }
   } catch (err) {
     console.error('Erro no processamento do webhook Meta:', err);

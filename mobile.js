@@ -246,6 +246,7 @@ const editModal = document.getElementById('mobile-edit-modal');
 const viewModal = document.getElementById('mobile-view-modal');
 const bankModal = document.getElementById('mobile-bank-modal');
 const profileModal = document.getElementById('mobile-profile-modal');
+const menuModal = document.getElementById('mobile-menu-modal');
 
 document.getElementById('mobile-filter-btn')?.addEventListener('click', () => {
   entryModal?.classList.add('show');
@@ -264,7 +265,29 @@ document.getElementById('close-bank-modal')?.addEventListener('click', () => ban
 document.getElementById('open-profile-btn')?.addEventListener('click', () => profileModal?.classList.add('show'));
 document.getElementById('close-profile-modal')?.addEventListener('click', () => profileModal?.classList.remove('show'));
 
-[entryModal, editModal, bankModal, profileModal].forEach(m => {
+document.getElementById('mobile-menu-btn')?.addEventListener('click', () => menuModal?.classList.add('show'));
+document.getElementById('close-menu-modal')?.addEventListener('click', () => menuModal?.classList.remove('show'));
+
+document.getElementById('menu-btn-profile')?.addEventListener('click', () => {
+  menuModal?.classList.remove('show');
+  profileModal?.classList.add('show');
+});
+
+document.getElementById('menu-btn-whatsapp')?.addEventListener('click', () => {
+  menuModal?.classList.remove('show');
+  let userId = 'demo-user';
+  const rawUser = window.localStorage.getItem('auth_user');
+  if (rawUser) {
+    try {
+      const u = JSON.parse(rawUser);
+      userId = u.id || u.user?.id || 'demo-user';
+    } catch(e){}
+  }
+  const whatsappUrl = `https://wa.me/15556013700?text=${encodeURIComponent('Ligar minha conta: ' + userId)}`;
+  window.open(whatsappUrl, '_blank');
+});
+
+[entryModal, editModal, viewModal, bankModal, profileModal, menuModal].forEach(m => {
   m?.addEventListener('click', (e) => {
     if (e.target === m) m.classList.remove('show');
   });
