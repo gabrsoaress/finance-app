@@ -1,4 +1,5 @@
-const http = require('http');
+const express = require('express');
+const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const Tesseract = require('tesseract.js');
@@ -6,7 +7,6 @@ const { createClient } = require('@supabase/supabase-js');
 const { GoogleGenAI } = require('@google/genai');
 
 const root = __dirname;
-const dbFile = path.join(root, 'db.json');
 
 // Carrega automaticamente variáveis do ficheiro .env
 const envPath = path.join(root, '.env');
@@ -22,107 +22,25 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-// Credenciais de API do WhatsApp Meta (Lidas do Ambiente ou Valor Padrão)
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'fluxo_verify_token_2026';
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || '';
 const WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID || '';
-
-
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_KEY || '';
-
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+
 const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
-// Polyfill WebSocket para compatibilidade do @supabase/supabase-js com Node 20
 if (!global.WebSocket) {
   global.WebSocket = require('ws');
 }
-
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-// Dados Iniciais de Demonstração (Seed)
-const initialDb = {
-  users: [],
-  categories: [
-    { id: 'cat-1', name: 'Alimentação', kind: 'expense', color: '#197A57' },
-    { id: 'cat-2', name: 'Casa', kind: 'expense', color: '#EF9274' },
-    { id: 'cat-3', name: 'Transportes', kind: 'expense', color: '#3B82F6' },
-    { id: 'cat-4', name: 'Lazer', kind: 'expense', color: '#F59E0B' },
-    { id: 'cat-5', name: 'Receitas', kind: 'income', color: '#10B981' },
-    { id: 'cat-6', name: 'Outros', kind: 'expense', color: '#8B5CF6' }
-  ],
-  transactions: [
-    { id: 'tx-1', description: 'Continente', amount: 42.65, kind: 'expense', source: 'WhatsApp', status: 'Confirmed', occurredOn: '2026-09-11T10:28:00.000Z', categoryId: 'cat-1', category: 'Alimentação' },
-    { id: 'tx-2', description: 'Vencimento', amount: 2300.00, kind: 'income', source: 'Banco', status: 'Confirmed', occurredOn: '2026-09-11T09:03:00.000Z', categoryId: 'cat-5', category: 'Receitas' },
-    { id: 'tx-3', description: 'Galp Energia', amount: 86.40, kind: 'expense', source: 'WhatsApp', status: 'Confirmed', occurredOn: '2026-09-10T17:42:00.000Z', categoryId: 'cat-2', category: 'Casa' },
-    { id: 'tx-4', description: 'CP — Comboios de Portugal', amount: 24.00, kind: 'expense', source: 'WhatsApp', status: 'Confirmed', occurredOn: '2026-09-09T08:20:00.000Z', categoryId: 'cat-3', category: 'Transportes' },
-    { id: 'tx-5', description: 'Netflix', amount: 15.99, kind: 'expense', source: 'Débito direto', status: 'Confirmed', occurredOn: '2026-09-07T12:00:00.000Z', categoryId: 'cat-4', category: 'Lazer' }
-  ],
-  budgets: [
-    { id: 'b-1', categoryId: 'cat-1', category: 'Alimentação', limit: 750.00, year: 2026, month: 9 },
-    { id: 'b-2', categoryId: 'cat-2', category: 'Casa', limit: 600.00, year: 2026, month: 9 },
-    { id: 'b-3', categoryId: 'cat-3', category: 'Transportes', limit: 400.00, year: 2026, month: 9 },
-    { id: 'b-4', categoryId: 'cat-4', category: 'Lazer', limit: 350.00, year: 2026, month: 9 }
-  ],
-  bankConnections: [
-    { id: 'bc-1', provider: 'DemoBank', institutionName: 'Banco de demonstração', status: 'Active', accountNumber: '•••• 0812', balance: 4280.50, lastSync: '2026-09-11T10:28:00.000Z' }
-  ],
-  attachments: []
-};
+const app = express();
 
-function loadDb() {
-  if (!fs.existsSync(dbFile)) {
-    saveDb(initialDb);
-    return initialDb;
-  }
-  try {
-    return JSON.parse(fs.readFileSync(dbFile, 'utf8'));
-  } catch (err) {
-    return initialDb;
-  }
-}
-
-function saveDb(data) {
-  fs.writeFileSync(dbFile, JSON.stringify(data, null, 2), 'utf8');
-}
-
-let db = loadDb();
-
-const types = {
-  '.html': 'text/html; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.svg': 'image/svg+xml'
-};
-
-function parseBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      try {
-        resolve(body ? JSON.parse(body) : {});
-      } catch (err) {
-        resolve({});
-      }
-    });
-    req.on('error', reject);
-  });
-}
-
-function sendJson(res, statusCode, data) {
-  res.writeHead(statusCode, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id'
-  });
-  res.end(JSON.stringify(data));
-}
+// Middlewares Globais
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
 
 // Analisador de Texto OCR Real com Tesseract
 async function performRealOcr(fileBufferOrPath, fileNameHint = '') {
@@ -159,7 +77,6 @@ async function performRealOcr(fileBufferOrPath, fileNameHint = '') {
     detectedCategory = 'Lazer';
   }
 
-  // Tenta extrair total em euros do texto real do OCR
   const matches = text.match(/(?:total|eur|€|\bval\b)[\s:]*([0-9]+[.,][0-9]{2})/i) || combinedText.match(/([0-9]+[.,][0-9]{2})/);
   if (matches && matches[1]) {
     detectedAmount = parseFloat(matches[1].replace(',', '.'));
@@ -200,315 +117,309 @@ async function sendMetaWhatsappMessage(toPhone, textMessage) {
   }
 }
 
-const requestListener = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+// Middleware de Autenticação (Supabase)
+async function authMiddleware(req, res, next) {
+  if (!supabase) return res.status(500).json({ error: 'Supabase não configurado no servidor.' });
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace('Bearer ', '').trim();
+  if (!token) return res.status(401).json({ error: 'Não autorizado.' });
+  
+  const { data } = await supabase.auth.getUser(token);
+  if (!data?.user) return res.status(401).json({ error: 'Não autorizado.' });
+  
+  req.user = data.user;
+  req.token = token;
+  next();
+}
 
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200);
-    res.end();
-    return;
+// --- REST API ENDPOINTS ---
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    ocrEngine: 'Tesseract.js (Ativo)',
+    metaWhatsappConfigured: Boolean(WHATSAPP_TOKEN && WHATSAPP_PHONE_ID)
+  });
+});
+
+app.post('/api/register', async (req, res) => {
+  const { email, pass, name } = req.body;
+  if (!email || !pass || !name) {
+    return res.status(400).json({ error: 'Nome, email e senha são obrigatórios.' });
   }
 
-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost:8080'}`);
-  const pathname = parsedUrl.pathname;
-
-  if (pathname === '/favicon.ico') {
-    res.writeHead(204);
-    res.end();
-    return;
+  if (!supabase) {
+    return res.status(500).json({ error: 'Supabase não configurado no servidor.' });
   }
 
-  // --- REST API ENDPOINTS ---
-  if (pathname.startsWith('/api/')) {
-    if (pathname === '/api/health' && req.method === 'GET') {
-      return sendJson(res, 200, {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        ocrEngine: 'Tesseract.js (Ativo)',
-        metaWhatsappConfigured: Boolean(WHATSAPP_TOKEN && WHATSAPP_PHONE_ID)
-      });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: pass,
+    options: {
+      data: { name }
     }
+  });
 
-    if (pathname === '/api/register' && req.method === 'POST') {
-      const body = await parseBody(req);
-      if (!body.email || !body.pass || !body.name) {
-        return sendJson(res, 400, { error: 'Nome, email e senha são obrigatórios.' });
-      }
+  if (error) {
+    return res.status(400).json({ error: error.message });
+  }
 
-      if (!supabase) {
-        return sendJson(res, 500, { error: 'Supabase não configurado no servidor.' });
-      }
+  const session = data.session;
+  const token = session ? session.access_token : null;
+  res.status(201).json({ message: 'Conta criada com sucesso', token, user: { id: data.user.id, name, email } });
+});
 
-      const { data, error } = await supabase.auth.signUp({
-        email: body.email,
-        password: body.pass,
-        options: {
-          data: {
-            name: body.name
-          }
-        }
-      });
+app.post('/api/login', async (req, res) => {
+  const { email, pass } = req.body;
+  
+  if (!supabase) {
+    return res.status(500).json({ error: 'Supabase não configurado no servidor.' });
+  }
 
-      if (error) {
-        return sendJson(res, 400, { error: error.message });
-      }
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: pass
+  });
 
-      const session = data.session;
-      const token = session ? session.access_token : null;
-      return sendJson(res, 201, { message: 'Conta criada com sucesso', token, user: { id: data.user.id, name: body.name, email: body.email } });
+  if (error || !data.user || !data.session) {
+    return res.status(401).json({ error: 'Email ou senha incorretos.' });
+  }
+
+  const name = data.user.user_metadata?.name || data.user.email.split('@')[0];
+  res.status(200).json({ message: 'Login com sucesso', token: data.session.access_token, user: { id: data.user.id, name, email: data.user.email } });
+});
+
+app.get('/api/profile', authMiddleware, (req, res) => {
+  res.status(200).json({
+    id: req.user.id,
+    email: req.user.email,
+    name: req.user.user_metadata?.name || ''
+  });
+});
+
+app.put('/api/profile', authMiddleware, async (req, res) => {
+  const { name, password, savings_goal } = req.body;
+  
+  const updateData = {};
+  if (name) { updateData.data = updateData.data || {}; updateData.data.name = name; }
+  if (savings_goal !== undefined) { updateData.data = updateData.data || {}; updateData.data.savings_goal = Number(savings_goal); }
+  if (password) updateData.password = password;
+  
+  try {
+    const fetchRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      method: 'PUT',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${req.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updateData)
+    });
+    const data = await fetchRes.json();
+    
+    if (!fetchRes.ok) {
+      return res.status(400).json({ error: data.msg || data.message || 'Erro ao atualizar perfil.' });
     }
+    res.status(200).json({ message: 'Perfil atualizado com sucesso.', user: { id: data.id, email: data.email, name: data.user_metadata?.name } });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro de conexão ao servidor de autenticação.' });
+  }
+});
 
-    if (pathname === '/api/login' && req.method === 'POST') {
-      const body = await parseBody(req);
-      
-      if (!supabase) {
-        return sendJson(res, 500, { error: 'Supabase não configurado no servidor.' });
-      }
+app.get('/api/budgets', authMiddleware, async (req, res) => {
+  const year = parseInt(req.query.year) || new Date().getFullYear();
+  const month = parseInt(req.query.month) || (new Date().getMonth() + 1);
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: body.email,
-        password: body.pass
-      });
+  const { data, error } = await supabase
+    .from('budgets')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .eq('budget_year', year)
+    .eq('budget_month', month);
+    
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(200).json({ budgets: data });
+});
 
-      if (error || !data.user || !data.session) {
-        return sendJson(res, 401, { error: 'Email ou senha incorretos.' });
-      }
+app.post('/api/budgets', authMiddleware, async (req, res) => {
+  const { category_name, budget_limit, budget_year, budget_month, category, limit, year, month } = req.body;
+  const catName = category_name || category || 'Alimentação';
+  const bLimit = budget_limit !== undefined ? budget_limit : limit;
+  const bYear = budget_year || year || new Date().getFullYear();
+  const bMonth = budget_month || month || (new Date().getMonth() + 1);
 
-      const name = data.user.user_metadata?.name || data.user.email.split('@')[0];
-      return sendJson(res, 200, { message: 'Login com sucesso', token: data.session.access_token, user: { id: data.user.id, name, email: data.user.email } });
-    }
+  if (!catName || bLimit === undefined) {
+    return res.status(400).json({ error: 'Dados incompletos.' });
+  }
 
-    function getTokenFromRequest(req) {
-      const authHeader = req.headers.authorization || '';
-      return authHeader.replace('Bearer ', '').trim();
-    }
+  const { data: catObj } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('name', catName)
+    .limit(1)
+    .maybeSingle();
 
-    async function getUserFromRequest(req) {
-      if (!supabase) return null;
-      const token = getTokenFromRequest(req);
-      if (!token) return null;
-      const { data } = await supabase.auth.getUser(token);
-      return data?.user || null;
-    }
+  const { data, error } = await supabase
+    .from('budgets')
+    .upsert({
+      user_id: req.user.id,
+      category_id: catObj ? catObj.id : null,
+      category_name: catName,
+      budget_limit: Number(bLimit),
+      budget_year: Number(bYear),
+      budget_month: Number(bMonth)
+    }, { onConflict: 'user_id, category_name, budget_year, budget_month' })
+    .select();
 
-    if (pathname === '/api/profile' && req.method === 'GET') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      return sendJson(res, 200, {
-        id: user.id,
-        email: user.email,
-        name: user.user_metadata?.name || ''
-      });
-    }
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(200).json(data[0] || data);
+});
 
-    if (pathname === '/api/profile' && req.method === 'PUT') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const body = await parseBody(req);
-      const { name, password, savings_goal } = body;
-      const token = getTokenFromRequest(req);
-      
-      const updateData = {};
-      if (name) { updateData.data = updateData.data || {}; updateData.data.name = name; }
-      if (savings_goal !== undefined) { updateData.data = updateData.data || {}; updateData.data.savings_goal = Number(savings_goal); }
-      if (password) updateData.password = password;
-      
-      try {
-        const fetchRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
-          method: 'PUT',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(updateData)
-        });
-        const data = await fetchRes.json();
-        
-        if (!fetchRes.ok) {
-          return sendJson(res, 400, { error: data.msg || data.message || 'Erro ao atualizar perfil.' });
-        }
-        return sendJson(res, 200, { message: 'Perfil atualizado com sucesso.', user: { id: data.id, email: data.email, name: data.user_metadata?.name } });
-      } catch (err) {
-        return sendJson(res, 500, { error: 'Erro de conexão ao servidor de autenticação.' });
-      }
-    }
+app.get('/api/dashboard', authMiddleware, async (req, res) => {
+  const year = parseInt(req.query.year) || new Date().getFullYear();
+  const month = parseInt(req.query.month) || (new Date().getMonth() + 1);
 
-    if (pathname === '/api/budgets' && req.method === 'GET') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const year = parseInt(parsedUrl.searchParams.get('year')) || new Date().getFullYear();
-      const month = parseInt(parsedUrl.searchParams.get('month')) || (new Date().getMonth() + 1);
+  const { data: txData, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', req.user.id);
+    
+  if (error) return res.status(500).json({ error: error.message });
+  
+  const filteredTx = (txData || []).filter(t => {
+    const d = new Date(t.occurred_on || t.created_at);
+    return d.getFullYear() === year && (d.getMonth() + 1) === month;
+  });
 
-      const { data, error } = await supabase
-        .from('budgets')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('budget_year', year)
-        .eq('budget_month', month);
-        
-      if (error) return sendJson(res, 500, { error: error.message });
-      return sendJson(res, 200, { budgets: data });
-    }
+  const income = filteredTx.filter(t => t.kind === 'income').reduce((acc, t) => acc + Number(t.amount), 0);
+  const expenses = filteredTx.filter(t => t.kind === 'expense').reduce((acc, t) => acc + Number(t.amount), 0);
 
-    if (pathname === '/api/budgets' && req.method === 'POST') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const { category_name, budget_limit, budget_year, budget_month } = await parseBody(req);
-      if (!category_name || budget_limit === undefined) {
-        return sendJson(res, 400, { error: 'Dados incompletos.' });
-      }
+  const byCatMap = {};
+  filteredTx.filter(t => t.kind === 'expense').forEach(t => {
+    const name = t.category_name || 'Outros';
+    byCatMap[name] = (byCatMap[name] || 0) + Number(t.amount);
+  });
 
-      const { data, error } = await supabase
-        .from('budgets')
-        .upsert({
-          user_id: user.id,
-          category_name,
-          budget_limit: Number(budget_limit),
-          budget_year: Number(budget_year),
-          budget_month: Number(budget_month)
-        }, { onConflict: 'user_id, category_name, budget_year, budget_month' })
-        .select();
+  const expensesByCategory = Object.keys(byCatMap).map(name => ({
+    name,
+    amount: byCatMap[name]
+  })).sort((a, b) => b.amount - a.amount);
 
-      if (error) return sendJson(res, 500, { error: error.message });
-      return sendJson(res, 200, { message: 'Orçamento guardado com sucesso.', budget: data[0] });
-    }
+  res.status(200).json({
+    period: { year, month },
+    income,
+    expenses,
+    savings: income - expenses,
+    expensesByCategory
+  });
+});
 
-    if (pathname === '/api/dashboard' && req.method === 'GET') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const year = parseInt(parsedUrl.searchParams.get('year')) || 2026;
-      const month = parseInt(parsedUrl.searchParams.get('month')) || 9;
+app.get('/api/transactions', authMiddleware, async (req, res) => {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .order('occurred_on', { ascending: false });
+    
+  if (error) return res.status(500).json({ error: error.message });
+  
+  const mapped = (data || []).map(t => ({
+    ...t,
+    categoryId: t.category_id,
+    category: t.category_name,
+    occurredOn: t.occurred_on
+  }));
+  
+  res.status(200).json(mapped);
+});
 
-      const { data: txData, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id);
-        
-      if (error) return sendJson(res, 500, { error: error.message });
-      
-      const filteredTx = (txData || []).filter(t => {
-        const d = new Date(t.occurred_on || t.created_at);
-        return d.getFullYear() === year && (d.getMonth() + 1) === month;
-      });
+app.post('/api/transactions', authMiddleware, async (req, res) => {
+  const body = req.body;
+  if (!body.description || !body.amount) {
+    return res.status(400).json({ error: 'Descrição e valor são obrigatórios.' });
+  }
 
-      const income = filteredTx.filter(t => t.kind === 'income').reduce((acc, t) => acc + Number(t.amount), 0);
-      const expenses = filteredTx.filter(t => t.kind === 'expense').reduce((acc, t) => acc + Number(t.amount), 0);
+  const { data: catObj } = await supabase
+    .from('categories')
+    .select('*')
+    .or(`id.eq.${body.categoryId},name.eq.${body.category}`)
+    .limit(1)
+    .maybeSingle();
 
-      const byCatMap = {};
-      filteredTx.filter(t => t.kind === 'expense').forEach(t => {
-        const name = t.category_name || 'Outros';
-        byCatMap[name] = (byCatMap[name] || 0) + Number(t.amount);
-      });
+  const { data, error } = await supabase
+    .from('transactions')
+    .insert({
+      user_id: req.user.id,
+      description: body.description.trim(),
+      amount: parseFloat(body.amount),
+      kind: body.kind || 'expense',
+      source: body.source || 'Manual',
+      status: 'Confirmed',
+      occurred_on: body.occurredOn || new Date().toISOString(),
+      category_id: catObj ? catObj.id : null,
+      category_name: catObj ? catObj.name : (body.category || 'Outros')
+    })
+    .select()
+    .single();
 
-      const expensesByCategory = Object.keys(byCatMap).map(name => ({
-        name,
-        amount: byCatMap[name]
-      })).sort((a, b) => b.amount - a.amount);
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json({ ...data, categoryId: data.category_id, category: data.category_name, occurredOn: data.occurred_on });
+});
 
-      return sendJson(res, 200, {
-        period: { year, month },
-        income,
-        expenses,
-        savings: income - expenses,
-        expensesByCategory
-      });
-    }
+app.put('/api/transactions/:id', authMiddleware, async (req, res) => {
+  const body = req.body;
+  
+  const { data: catObj } = await supabase
+    .from('categories')
+    .select('*')
+    .or(`id.eq.${body.categoryId},name.eq.${body.category}`)
+    .limit(1)
+    .maybeSingle();
 
-    if (pathname === '/api/transactions' && req.method === 'GET') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('occurred_on', { ascending: false });
-        
-      if (error) return sendJson(res, 500, { error: error.message });
-      
-      // Mapear campos de snake_case para camelCase para o frontend
-      const mapped = (data || []).map(t => ({
-        ...t,
-        categoryId: t.category_id,
-        category: t.category_name,
-        occurredOn: t.occurred_on
-      }));
-      
-      return sendJson(res, 200, mapped);
-    }
+  const { data, error } = await supabase
+    .from('transactions')
+    .update({
+      description: body.description?.trim(),
+      amount: body.amount !== undefined ? parseFloat(body.amount) : undefined,
+      kind: body.kind,
+      category_id: catObj ? catObj.id : undefined,
+      category_name: catObj ? catObj.name : body.category
+    })
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .select()
+    .single();
+    
+  if (error || !data) return res.status(404).json({ error: 'Lançamento não encontrado ou erro ao atualizar.' });
+  res.status(200).json({ ...data, categoryId: data.category_id, category: data.category_name, occurredOn: data.occurred_on });
+});
 
-    const txMatch = pathname.match(/^\/api\/transactions\/([^/]+)$/);
-    if (txMatch && req.method === 'PUT') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const body = await parseBody(req);
-      
-      const { data: catObj } = await supabase
-        .from('categories')
-        .select('*')
-        .or(`id.eq.${body.categoryId},name.eq.${body.category}`)
-        .limit(1)
-        .maybeSingle();
+app.delete('/api/transactions/:id', authMiddleware, async (req, res) => {
+  const { data, error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .select();
+    
+  if (error || !data || data.length === 0) return res.status(404).json({ error: 'Lançamento não encontrado.' });
+  res.status(200).json({ ok: true });
+});
 
-      const { data, error } = await supabase
-        .from('transactions')
-        .update({
-          description: body.description?.trim(),
-          amount: body.amount !== undefined ? parseFloat(body.amount) : undefined,
-          kind: body.kind,
-          category_id: catObj ? catObj.id : undefined,
-          category_name: catObj ? catObj.name : body.category
-        })
-        .eq('id', txMatch[1])
-        .eq('user_id', user.id)
-        .select()
-        .single();
-        
-      if (error || !data) return sendJson(res, 404, { error: 'Lançamento não encontrado ou erro ao atualizar.' });
-      return sendJson(res, 200, { ...data, categoryId: data.category_id, category: data.category_name, occurredOn: data.occurred_on });
-    }
+app.post('/api/transactions/parse-ai', authMiddleware, async (req, res) => {
+  const { fileBase64, mimeType } = req.body;
+  
+  if (!fileBase64 || !mimeType) {
+    return res.status(400).json({ error: 'Ficheiro base64 e mimeType são obrigatórios.' });
+  }
 
-    if (txMatch && req.method === 'DELETE') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const { data, error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', txMatch[1])
-        .eq('user_id', user.id)
-        .select();
-        
-      if (error || !data || data.length === 0) return sendJson(res, 404, { error: 'Lançamento não encontrado.' });
-      return sendJson(res, 200, { ok: true });
-    }
+  if (!ai) {
+    return res.status(500).json({ error: 'A API Key do Google Gemini não está configurada no servidor (.env).' });
+  }
 
-    if (pathname === '/api/transactions/parse-ai' && req.method === 'POST') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const body = await parseBody(req);
-      const { fileBase64, mimeType } = body;
-      
-      if (!fileBase64 || !mimeType) {
-        return sendJson(res, 400, { error: 'Ficheiro base64 e mimeType são obrigatórios.' });
-      }
-
-      if (!ai) {
-        return sendJson(res, 500, { error: 'A API Key do Google Gemini não está configurada no servidor (.env).' });
-      }
-
-      try {
-        const prompt = `Analisa este comprovativo ou fatura e extrai a seguinte informação estruturada em formato JSON (SEM markdown, apenas o JSON puro).
+  try {
+    const prompt = `Analisa este comprovativo ou fatura e extrai a seguinte informação estruturada em formato JSON (SEM markdown, apenas o JSON puro).
 IMPORTANTE: Extrai o valor EXATO e a MOEDA ORIGINAL que aparece no documento. Não faças conversões matemáticas.
 
 {
@@ -520,443 +431,320 @@ IMPORTANTE: Extrai o valor EXATO e a MOEDA ORIGINAL que aparece no documento. N�
   "kind": "<'expense' para despesa, 'income' para receita, ou 'transfer' para transferência. IMPORTANTE: Cuidado com o layout de comprovativos PIX (ex: C6 Bank)! A 'Conta de origem' (quem pagou) aparece muitas vezes no fim. Lê os rótulos com atenção: se o utilizador (ex: Gabriel) for o destinatário a receber, é 'income' (receita). Se for a origem a pagar, é 'expense'. Se origem e destino forem o mesmo titular, é 'transfer'.>"
 }`;
 
-        const modelsToTry = ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-pro-latest'];
-        let response = null;
-        let lastErr = null;
+    const modelsToTry = ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-pro-latest'];
+    let response = null;
+    let lastErr = null;
 
-        for (const modelName of modelsToTry) {
-          try {
-            response = await ai.models.generateContent({
-              model: modelName,
-              contents: [
-                prompt,
-                {
-                  inlineData: {
-                    data: fileBase64.split(',')[1] || fileBase64,
-                    mimeType: mimeType
-                  }
-                }
-              ]
-            });
-            break; // Succeeded!
-          } catch (e) {
-            console.error(`Erro com modelo ${modelName}:`, e.message);
-            lastErr = e;
-            // Se não for erro 503 ou 429, e não for 404, não tenta o próximo? Tenta sempre o próximo para garantir.
-            continue;
-          }
-        }
-
-        if (!response) {
-          throw lastErr;
-        }
-
-        let text = response.text || '';
-        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        let parsedData;
-        try {
-          parsedData = JSON.parse(text);
-        } catch (e) {
-          console.error("Erro a fazer parse do JSON do Gemini:", text);
-          return sendJson(res, 500, { error: 'O Gemini não devolveu um JSON válido.' });
-        }
-        
-        // Conversão com Cotação Histórica
-        if (parsedData.original_currency === 'BRL' && parsedData.original_amount) {
-          try {
-            const dateStr = parsedData.date || 'latest';
-            // Validar formato da data YYYY-MM-DD, senão usar 'latest'
-            const validDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : 'latest';
-            
-            const reqUrl = `https://api.frankfurter.app/${validDate}?from=BRL&to=EUR`;
-            const rateRes = await fetch(reqUrl);
-            
-            if (rateRes.ok) {
-              const rateData = await rateRes.json();
-              const rate = rateData.rates?.EUR;
-              if (rate) {
-                parsedData.amount = parseFloat((parsedData.original_amount * rate).toFixed(2));
-              } else {
-                parsedData.amount = parseFloat((parsedData.original_amount / 6).toFixed(2));
+    for (const modelName of modelsToTry) {
+      try {
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents: [
+            prompt,
+            {
+              inlineData: {
+                data: fileBase64.split(',')[1] || fileBase64,
+                mimeType: mimeType
               }
-            } else {
-              parsedData.amount = parseFloat((parsedData.original_amount / 6).toFixed(2));
             }
-          } catch (apiErr) {
+          ]
+        });
+        break; // Succeeded!
+      } catch (e) {
+        console.error(`Erro com modelo ${modelName}:`, e.message);
+        lastErr = e;
+        continue;
+      }
+    }
+
+    if (!response) {
+      throw lastErr;
+    }
+
+    let text = response.text || '';
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    let parsedData;
+    try {
+      parsedData = JSON.parse(text);
+    } catch (e) {
+      console.error("Erro a fazer parse do JSON do Gemini:", text);
+      return res.status(500).json({ error: 'O Gemini não devolveu um JSON válido.' });
+    }
+    
+    // Conversão com Cotação Histórica
+    if (parsedData.original_currency === 'BRL' && parsedData.original_amount) {
+      try {
+        const dateStr = parsedData.date || 'latest';
+        const validDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : 'latest';
+        
+        const reqUrl = `https://api.frankfurter.app/${validDate}?from=BRL&to=EUR`;
+        const rateRes = await fetch(reqUrl);
+        
+        if (rateRes.ok) {
+          const rateData = await rateRes.json();
+          const rate = rateData.rates?.EUR;
+          if (rate) {
+            parsedData.amount = parseFloat((parsedData.original_amount * rate).toFixed(2));
+          } else {
             parsedData.amount = parseFloat((parsedData.original_amount / 6).toFixed(2));
           }
         } else {
-          parsedData.amount = parsedData.original_amount;
+          parsedData.amount = parseFloat((parsedData.original_amount / 6).toFixed(2));
         }
-        
-        return sendJson(res, 200, parsedData);
-      } catch (err) {
-        console.error('Erro na API do Gemini:', err);
-        return sendJson(res, 500, { error: 'Erro ao processar o documento com IA.' });
+      } catch (apiErr) {
+        parsedData.amount = parseFloat((parsedData.original_amount / 6).toFixed(2));
       }
-    }
-
-    if (pathname === '/api/transactions' && req.method === 'POST') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const body = await parseBody(req);
-      if (!body.description || !body.amount) {
-        return sendJson(res, 400, { error: 'Descrição e valor são obrigatórios.' });
-      }
-
-      const { data: catObj } = await supabase
-        .from('categories')
-        .select('*')
-        .or(`id.eq.${body.categoryId},name.eq.${body.category}`)
-        .limit(1)
-        .maybeSingle();
-
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          description: body.description.trim(),
-          amount: parseFloat(body.amount),
-          kind: body.kind || 'expense',
-          source: body.source || 'Manual',
-          status: 'Confirmed',
-          occurred_on: body.occurredOn || new Date().toISOString(),
-          category_id: catObj ? catObj.id : null,
-          category_name: catObj ? catObj.name : (body.category || 'Outros')
-        })
-        .select()
-        .single();
-
-      if (error) return sendJson(res, 500, { error: error.message });
-      return sendJson(res, 201, { ...data, categoryId: data.category_id, category: data.category_name, occurredOn: data.occurred_on });
-    }
-
-    if (pathname === '/api/categories' && req.method === 'GET') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .or(`user_id.eq.${user.id},user_id.is.null`);
-        
-      if (error) return sendJson(res, 500, { error: error.message });
-      return sendJson(res, 200, data);
-    }
-
-    if (pathname === '/api/categories' && req.method === 'POST') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const body = await parseBody(req);
-      if (!body.name) return sendJson(res, 400, { error: 'Nome da categoria é obrigatório.' });
-
-      const { data, error } = await supabase
-        .from('categories')
-        .insert({
-          user_id: user.id,
-          name: body.name.trim(),
-          kind: body.kind || 'expense',
-          color: body.color || '#197A57'
-        })
-        .select()
-        .single();
-        
-      if (error) return sendJson(res, 500, { error: error.message });
-      return sendJson(res, 201, data);
-    }
-
-    if (pathname === '/api/planning' && req.method === 'GET') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const year = parseInt(parsedUrl.searchParams.get('year')) || 2026;
-      const month = parseInt(parsedUrl.searchParams.get('month')) || 9;
-
-      const { data: txData } = await supabase
-        .from('transactions')
-        .select('amount, category_name')
-        .eq('user_id', user.id)
-        .eq('kind', 'expense');
-        
-      const spentMap = {};
-      (txData || []).forEach(t => {
-        const catName = t.category_name || 'Outros';
-        spentMap[catName] = (spentMap[catName] || 0) + Number(t.amount);
-      });
-
-      const { data: budgets } = await supabase
-        .from('budgets')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('budget_year', year)
-        .eq('budget_month', month);
-
-      const items = (budgets || []).map(b => {
-        const spent = spentMap[b.category_name] || 0;
-        return {
-          id: b.id,
-          category: b.category_name,
-          limit: b.budget_limit,
-          spent: spent,
-          remaining: b.budget_limit - spent
-        };
-      });
-
-      return sendJson(res, 200, items);
-    }
-
-    if (pathname === '/api/budgets' && req.method === 'POST') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const body = await parseBody(req);
-      const category = body.category || 'Alimentação';
-      const year = body.year || 2026;
-      const month = body.month || 9;
-
-      const { data: catObj } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('name', category)
-        .limit(1)
-        .maybeSingle();
-
-      const { data, error } = await supabase
-        .from('budgets')
-        .upsert({
-          user_id: user.id,
-          category_id: catObj ? catObj.id : null,
-          category_name: category,
-          budget_limit: parseFloat(body.limit),
-          budget_year: year,
-          budget_month: month
-        }, { onConflict: 'user_id, category_name, budget_year, budget_month' })
-        .select()
-        .single();
-        
-      if (error) return sendJson(res, 500, { error: error.message });
-      return sendJson(res, 200, data);
-    }
-
-    if (pathname === '/api/bank-connections' && req.method === 'GET') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const { data, error } = await supabase
-        .from('bank_connections')
-        .select('*')
-        .eq('user_id', user.id);
-        
-      if (error) return sendJson(res, 500, { error: error.message });
-      return sendJson(res, 200, data);
-    }
-
-    if (pathname === '/api/bank-connections' && req.method === 'POST') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const body = await parseBody(req);
-      const { data, error } = await supabase
-        .from('bank_connections')
-        .insert({
-          user_id: user.id,
-          provider: body.provider || 'SIBS_OpenBanking',
-          institution_name: body.institutionName || 'Banco Autorizado',
-          status: 'Active',
-          account_number: '•••• ' + Math.floor(1000 + Math.random() * 9000),
-          balance: 4280.50,
-          last_sync: new Date().toISOString()
-        })
-        .select()
-        .single();
-        
-      if (error) return sendJson(res, 500, { error: error.message });
-      return sendJson(res, 201, data);
-    }
-
-    // Endpoint Webhook Oficial de Validação do WhatsApp Cloud API (GET)
-    if (pathname === '/api/webhooks/whatsapp' && req.method === 'GET') {
-      const mode = parsedUrl.searchParams.get('hub.mode');
-      const token = parsedUrl.searchParams.get('hub.verify_token');
-      const challenge = parsedUrl.searchParams.get('hub.challenge');
-
-      if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end(challenge);
-        return;
-      }
-      res.writeHead(403);
-      res.end('Forbidden');
-      return;
-    }
-
-    // Endpoint Webhook Oficial de Mensagens/Receção da Meta WhatsApp (POST)
-    if (pathname === '/api/webhooks/whatsapp' && req.method === 'POST') {
-      const body = await parseBody(req);
-      try {
-        const entry = body.entry?.[0];
-        const changes = entry?.changes?.[0];
-        const value = changes?.value;
-        const message = value?.messages?.[0];
-
-        if (message) {
-          const from = message.from;
-          const msgType = message.type;
-
-          let replyText = "Recebi a sua mensagem no WhatsApp! Envie uma imagem ou PDF de fatura para registar.";
-
-          if (msgType === 'text') {
-            const userText = message.text?.body || '';
-            if (/olá|oi|boas|bom dia|boa tarde/i.test(userText)) {
-              replyText = "Olá! Sou o assistente do Fluxo. Pode enviar fotos de faturas ou comprovativos e eu registo o lançamento automaticamente.";
-            } else if (/saldo|resumo/i.test(userText)) {
-              const exp = db.transactions.filter(t => t.kind === 'expense').reduce((a, b) => a + Number(b.amount), 0);
-              replyText = `O seu resumo atual de despesas em Setembro é de € ${exp.toFixed(2).replace('.', ',')}.`;
-            }
-          } else if (msgType === 'image' || msgType === 'document') {
-            // Em ambiente real com token, descarrega a imagem da Meta API.
-            // Aqui executa o OCR Real no ficheiro
-            const ocrResult = await performRealOcr(null, message.document?.filename || 'fatura.jpg');
-            const ocrTx = {
-              id: 'tx-' + Date.now(),
-              description: ocrResult.detectedMerchant,
-              amount: ocrResult.detectedAmount,
-              kind: 'expense',
-              source: 'WhatsApp Cloud API',
-              status: 'Confirmed',
-              occurredOn: new Date().toISOString(),
-              category: ocrResult.detectedCategory
-            };
-            db.transactions.unshift(ocrTx);
-            saveDb(db);
-
-            replyText = `✓ Registei uma despesa de € ${ocrResult.detectedAmount.toFixed(2).replace('.', ',')} em ${ocrResult.detectedCategory} (${ocrResult.detectedMerchant}).`;
-          }
-
-          await sendMetaWhatsappMessage(from, replyText);
-        }
-      } catch (err) {
-        console.error('Erro no processamento do webhook Meta:', err);
-      }
-      return sendJson(res, 200, { status: 'received' });
-    }
-
-    // Endpoint de Upload Interno / OCR do Frontend
-    if (pathname === '/api/webhooks/whatsapp/attachments' && req.method === 'POST') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const body = await parseBody(req);
-      const fileName = body.fileName || 'recibo.pdf';
-
-      const ocrResult = await performRealOcr(null, fileName);
-
-      const attachment = {
-        id: 'att-' + Date.now(),
-        storagePath: `uploads/${fileName}`,
-        contentType: body.contentType || 'application/pdf',
-        sizeBytes: body.sizeBytes || 184000,
-        source: 'whatsapp',
-        processingStatus: 'completed'
-      };
-
-      const { data: catObj } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('name', ocrResult.detectedCategory)
-        .limit(1)
-        .maybeSingle();
-
-      const { data: ocrTx, error } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          description: ocrResult.detectedMerchant,
-          amount: ocrResult.detectedAmount,
-          kind: 'expense',
-          source: 'WhatsApp OCR Real',
-          status: 'Confirmed',
-          occurred_on: new Date().toISOString(),
-          category_id: catObj ? catObj.id : null,
-          category_name: ocrResult.detectedCategory
-        })
-        .select()
-        .single();
-
-      return sendJson(res, 202, {
-        attachment,
-        createdTransaction: ocrTx,
-        whatsappReply: `✓ Registei uma despesa de € ${ocrResult.detectedAmount.toFixed(2).replace('.', ',')} em ${ocrResult.detectedCategory} (${ocrResult.detectedMerchant}). Está correto?`
-      });
+    } else {
+      parsedData.amount = parsedData.original_amount;
     }
     
-    // Endpoint de Preview OCR (Não guarda na BD)
-    if (pathname === '/api/ocr-preview' && req.method === 'POST') {
-      const user = await getUserFromRequest(req);
-      if (!user) return sendJson(res, 401, { error: 'Não autorizado.' });
-      
-      const body = await parseBody(req);
-      const fileName = body.fileName || 'recibo.pdf';
+    res.status(200).json(parsedData);
+  } catch (err) {
+    console.error('Erro na API do Gemini:', err);
+    res.status(500).json({ error: 'Erro ao processar o documento com IA.' });
+  }
+});
 
-      const ocrResult = await performRealOcr(null, fileName);
+app.get('/api/categories', authMiddleware, async (req, res) => {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .or(`user_id.eq.${req.user.id},user_id.is.null`);
+    
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(200).json(data);
+});
 
-      return sendJson(res, 200, {
-        detectedMerchant: ocrResult.detectedMerchant,
-        detectedCategory: ocrResult.detectedCategory,
-        detectedAmount: ocrResult.detectedAmount
-      });
-    }
+app.post('/api/categories', authMiddleware, async (req, res) => {
+  const body = req.body;
+  if (!body.name) return res.status(400).json({ error: 'Nome da categoria é obrigatório.' });
 
-    if (pathname === '/api/webhooks/whatsapp/message' && req.method === 'POST') {
-      const body = await parseBody(req);
-      const text = (body.message || '').trim();
+  const { data, error } = await supabase
+    .from('categories')
+    .insert({
+      user_id: req.user.id,
+      name: body.name.trim(),
+      kind: body.kind || 'expense',
+      color: body.color || '#197A57'
+    })
+    .select()
+    .single();
+    
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
+});
 
-      let reply = "Não entendi a mensagem. Pode enviar uma foto/PDF de um recibo ou digitar 'Ajuda'.";
-      if (/olá|oi|boas|bom dia|boa tarde/i.test(text)) {
-        reply = "Olá! Envie uma foto ou PDF de um comprovativo de compra e eu trato do lançamento automaticamente.";
-      } else if (/saldo|resumo|ajuda/i.test(text)) {
-        const totalExp = db.transactions.filter(t => t.kind === 'expense').reduce((a, b) => a + Number(b.amount), 0);
-        reply = `O seu resumo de Setembro: Despesas totais de € ${totalExp.toFixed(2).replace('.', ',')}. Pode enviar faturas a qualquer momento!`;
+app.get('/api/planning', authMiddleware, async (req, res) => {
+  const year = parseInt(req.query.year) || new Date().getFullYear();
+  const month = parseInt(req.query.month) || (new Date().getMonth() + 1);
+
+  const { data: txData } = await supabase
+    .from('transactions')
+    .select('amount, category_name')
+    .eq('user_id', req.user.id)
+    .eq('kind', 'expense');
+    
+  const spentMap = {};
+  (txData || []).forEach(t => {
+    const catName = t.category_name || 'Outros';
+    spentMap[catName] = (spentMap[catName] || 0) + Number(t.amount);
+  });
+
+  const { data: budgets } = await supabase
+    .from('budgets')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .eq('budget_year', year)
+    .eq('budget_month', month);
+
+  const items = (budgets || []).map(b => {
+    const spent = spentMap[b.category_name] || 0;
+    return {
+      id: b.id,
+      category: b.category_name,
+      limit: b.budget_limit,
+      spent: spent,
+      remaining: b.budget_limit - spent
+    };
+  });
+
+  res.status(200).json(items);
+});
+
+app.get('/api/bank-connections', authMiddleware, async (req, res) => {
+  const { data, error } = await supabase
+    .from('bank_connections')
+    .select('*')
+    .eq('user_id', req.user.id);
+    
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(200).json(data);
+});
+
+app.post('/api/bank-connections', authMiddleware, async (req, res) => {
+  const body = req.body;
+  const { data, error } = await supabase
+    .from('bank_connections')
+    .insert({
+      user_id: req.user.id,
+      provider: body.provider || 'SIBS_OpenBanking',
+      institution_name: body.institutionName || 'Banco Autorizado',
+      status: 'Active',
+      account_number: '•••• ' + Math.floor(1000 + Math.random() * 9000),
+      balance: 4280.50,
+      last_sync: new Date().toISOString()
+    })
+    .select()
+    .single();
+    
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
+});
+
+app.post('/api/webhooks/whatsapp/attachments', authMiddleware, async (req, res) => {
+  const body = req.body;
+  const fileName = body.fileName || 'recibo.pdf';
+
+  const ocrResult = await performRealOcr(null, fileName);
+
+  const attachment = {
+    id: 'att-' + Date.now(),
+    storagePath: `uploads/${fileName}`,
+    contentType: body.contentType || 'application/pdf',
+    sizeBytes: body.sizeBytes || 184000,
+    source: 'whatsapp',
+    processingStatus: 'completed'
+  };
+
+  const { data: catObj } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('name', ocrResult.detectedCategory)
+    .limit(1)
+    .maybeSingle();
+
+  const { data: ocrTx, error } = await supabase
+    .from('transactions')
+    .insert({
+      user_id: req.user.id,
+      description: ocrResult.detectedMerchant,
+      amount: ocrResult.detectedAmount,
+      kind: 'expense',
+      source: 'WhatsApp OCR Real',
+      status: 'Confirmed',
+      occurred_on: new Date().toISOString(),
+      category_id: catObj ? catObj.id : null,
+      category_name: ocrResult.detectedCategory
+    })
+    .select()
+    .single();
+
+  res.status(202).json({
+    attachment,
+    createdTransaction: ocrTx,
+    whatsappReply: `✓ Registei uma despesa de € ${ocrResult.detectedAmount.toFixed(2).replace('.', ',')} em ${ocrResult.detectedCategory} (${ocrResult.detectedMerchant}). Está correto?`
+  });
+});
+
+app.post('/api/ocr-preview', authMiddleware, async (req, res) => {
+  const body = req.body;
+  const fileName = body.fileName || 'recibo.pdf';
+  const ocrResult = await performRealOcr(null, fileName);
+  res.status(200).json({
+    detectedMerchant: ocrResult.detectedMerchant,
+    detectedCategory: ocrResult.detectedCategory,
+    detectedAmount: ocrResult.detectedAmount
+  });
+});
+
+app.get('/api/webhooks/whatsapp', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
+    res.status(200).send(challenge);
+  } else {
+    res.status(403).send('Forbidden');
+  }
+});
+
+app.post('/api/webhooks/whatsapp', async (req, res) => {
+  try {
+    const entry = req.body.entry?.[0];
+    const changes = entry?.changes?.[0];
+    const value = changes?.value;
+    const message = value?.messages?.[0];
+
+    if (message) {
+      const from = message.from;
+      const msgType = message.type;
+
+      let replyText = "Recebi a sua mensagem no WhatsApp! Envie uma imagem ou PDF de fatura para registar. (Nota: Funcionalidade em atualização para o novo sistema).";
+
+      if (msgType === 'text') {
+        const userText = message.text?.body || '';
+        if (/olá|oi|boas|bom dia|boa tarde/i.test(userText)) {
+          replyText = "Olá! Sou o assistente do Fluxo. Pode enviar fotos de faturas ou comprovativos e eu registo o lançamento automaticamente.";
+        } else if (/saldo|resumo/i.test(userText)) {
+          replyText = "A consulta de saldo pelo WhatsApp está em manutenção. Por favor consulte o saldo na sua App Gestão.";
+        }
+      } else if (msgType === 'image' || msgType === 'document') {
+        const ocrResult = await performRealOcr(null, message.document?.filename || 'fatura.jpg');
+        replyText = `Recebi a despesa de € ${ocrResult.detectedAmount.toFixed(2).replace('.', ',')} em ${ocrResult.detectedCategory}. Note que não foi gravada na conta, esta funcionalidade está em atualização.`;
       }
 
-      return sendJson(res, 200, { reply });
+      await sendMetaWhatsappMessage(from, replyText);
     }
+  } catch (err) {
+    console.error('Erro no processamento do webhook Meta:', err);
+  }
+  res.status(200).json({ status: 'received' });
+});
 
-    return sendJson(res, 404, { error: 'Endpoint não encontrado.' });
+app.post('/api/webhooks/whatsapp/message', (req, res) => {
+  const text = (req.body.message || '').trim();
+
+  let reply = "Não entendi a mensagem. Pode enviar uma foto/PDF de um recibo ou digitar 'Ajuda'.";
+  if (/olá|oi|boas|bom dia|boa tarde/i.test(text)) {
+    reply = "Olá! Envie uma foto ou PDF de um comprovativo de compra e eu trato do lançamento automaticamente.";
+  } else if (/saldo|resumo|ajuda/i.test(text)) {
+    reply = "A consulta de saldo está temporariamente indisponível nesta demonstração (Manutenção).";
   }
 
-  // --- SERVIDOR DE FICHEIROS ESTÁTICOS ---
+  res.status(200).json({ reply });
+});
+
+app.use(express.static(root, { index: false }));
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'Endpoint não encontrado.' });
+  }
+
+  const file = path.join(root, req.path);
+  if (fs.existsSync(file) && !fs.statSync(file).isDirectory() && req.path !== '/') {
+    return res.sendFile(file);
+  }
+
   const ua = req.headers['user-agent'] || '';
   const isMobile = /Mobile|Android|iPhone|iPad|iPod|IEMobile|BlackBerry|Opera Mini/i.test(ua);
-  const mode = parsedUrl.searchParams.get('mode');
+  const mode = req.query.mode;
 
   let defaultPage = '/index.html';
   if (isMobile && mode !== 'desktop') {
     defaultPage = '/mobile.html';
   }
 
-  const requested = (pathname === '/' || pathname === '/index.html') ? defaultPage : decodeURIComponent(pathname);
-  const file = path.resolve(root, `.${requested}`);
-
-  if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Ficheiro não encontrado.');
-    return;
-  }
-
-  const ext = path.extname(file);
-  res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
-  fs.createReadStream(file).pipe(res);
-};
-
-const server = http.createServer(requestListener);
+  res.sendFile(path.join(root, defaultPage));
+});
 
 if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-  module.exports = requestListener;
+  module.exports = app;
 } else {
   const PORT = process.env.PORT || 8080;
-  server.listen(PORT, () => console.log(`🚀 Servidor Fluxo (com Tesseract OCR Real e Webhook Meta WhatsApp) a rodar em http://localhost:${PORT}`));
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor Fluxo REST a correr localmente em http://localhost:${PORT}`);
+  });
 }

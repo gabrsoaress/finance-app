@@ -557,7 +557,7 @@ if (mobileAuthToggle) {
       mobileAuthTitle.textContent = 'Criar uma conta';
       mobileAuthSubmit.textContent = 'Registar e Entrar';
       mobileAuthToggle.textContent = 'Já tem conta? Entrar';
-      mobileNameLabel.style.display = 'block';
+      mobileNameLabel.style.display = 'grid';
       mobileNameInput.required = true;
     } else {
       if (mobileAuthLabel) mobileAuthLabel.textContent = 'ACESSO';
