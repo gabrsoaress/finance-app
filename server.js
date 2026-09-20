@@ -200,13 +200,13 @@ async function sendMetaWhatsappMessage(toPhone, textMessage) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
+const requestListener = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id'
-    });
+    res.writeHead(200);
     res.end();
     return;
   }
@@ -950,7 +950,13 @@ IMPORTANTE: Extrai o valor EXATO e a MOEDA ORIGINAL que aparece no documento. N�
   const ext = path.extname(file);
   res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
   fs.createReadStream(file).pipe(res);
-});
+};
 
-const PORT = 8080;
-server.listen(PORT, () => console.log(`🚀 Servidor Fluxo (com Tesseract OCR Real e Webhook Meta WhatsApp) a rodar em http://localhost:${PORT}`));
+const server = http.createServer(requestListener);
+
+if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+  module.exports = requestListener;
+} else {
+  const PORT = process.env.PORT || 8080;
+  server.listen(PORT, () => console.log(`🚀 Servidor Fluxo (com Tesseract OCR Real e Webhook Meta WhatsApp) a rodar em http://localhost:${PORT}`));
+}
