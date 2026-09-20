@@ -551,15 +551,16 @@ if (mobileAuthToggle) {
   mobileAuthToggle.addEventListener('click', (e) => {
     e.preventDefault();
     mobileIsRegisterMode = !mobileIsRegisterMode;
+    const mobileAuthLabel = document.querySelector('.auth-box p') || document.getElementById('mobile-auth-label');
     if (mobileIsRegisterMode) {
-      mobileAuthLabel.textContent = 'REGISTO';
+      if (mobileAuthLabel) mobileAuthLabel.textContent = 'REGISTO';
       mobileAuthTitle.textContent = 'Criar uma conta';
       mobileAuthSubmit.textContent = 'Registar e Entrar';
       mobileAuthToggle.textContent = 'Já tem conta? Entrar';
       mobileNameLabel.style.display = 'block';
       mobileNameInput.required = true;
     } else {
-      mobileAuthLabel.textContent = 'ACESSO';
+      if (mobileAuthLabel) mobileAuthLabel.textContent = 'ACESSO';
       mobileAuthTitle.textContent = 'Finance App';
       mobileAuthSubmit.textContent = 'Entrar';
       mobileAuthToggle.textContent = 'Ainda não tem conta? Criar conta';
@@ -575,11 +576,16 @@ if (mobileLoginForm) {
     e.preventDefault();
     const email = document.getElementById('mobile-login-email').value;
     const pass = document.getElementById('mobile-login-pass').value;
+    const originalText = mobileAuthSubmit.textContent;
+    mobileAuthSubmit.textContent = 'Aguarde...';
+    mobileAuthSubmit.disabled = true;
     
     try {
       if (mobileIsRegisterMode) {
         const name = mobileNameInput.value;
         if (!name) {
+          mobileAuthSubmit.textContent = originalText;
+          mobileAuthSubmit.disabled = false;
           await window.CustomDialog.alert('Por favor, introduza o seu nome.');
           return;
         }
@@ -613,6 +619,9 @@ if (mobileLoginForm) {
       }
     } catch (err) {
       await window.CustomDialog.alert('Erro de comunicação com o servidor.');
+    } finally {
+      mobileAuthSubmit.textContent = originalText;
+      mobileAuthSubmit.disabled = false;
     }
   });
 }

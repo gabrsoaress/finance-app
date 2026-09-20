@@ -276,8 +276,7 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 401, { error: 'Email ou senha incorretos.' });
       }
 
-      // name might be in user_metadata
-      const name = data.user.user_metadata?.name || data.user.email;
+      const name = data.user.user_metadata?.name || data.user.email.split('@')[0];
       return sendJson(res, 200, { message: 'Login com sucesso', token: data.session.access_token, user: { id: data.user.id, name, email: data.user.email } });
     }
 
