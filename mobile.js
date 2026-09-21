@@ -283,7 +283,7 @@ document.getElementById('menu-btn-whatsapp')?.addEventListener('click', () => {
       userId = u.id || u.user?.id || 'demo-user';
     } catch(e){}
   }
-  const whatsappUrl = `https://wa.me/15556013700?text=${encodeURIComponent('Ligar minha conta: ' + userId)}`;
+  const whatsappUrl = `/simulator.html`;
   window.open(whatsappUrl, '_blank');
 });
 
