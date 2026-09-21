@@ -865,7 +865,7 @@ app.post('/api/webhooks/whatsapp/message', (req, res) => {
 
 app.use(express.static(root, { index: false }));
 
-app.get('*', (req, res, next) => {
+app.get(/(.*)/, (req, res, next) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'Endpoint não encontrado.' });
   }
