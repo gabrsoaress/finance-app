@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador WhatsApp - Finance App</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #e5ddd5; margin: 0; padding: 20px; display: flex; justify-content: center; height: 100vh; box-sizing: border-box; }
+    .chat-container { width: 100%; max-width: 400px; background-color: #efeae2; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
+    .header { background-color: #075e54; color: white; padding: 15px; font-weight: bold; text-align: center; font-size: 1.1em; }
+    .messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-size: cover; }
+    .msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; }
+    .msg.user { background-color: #dcf8c6; align-self: flex-end; border-top-right-radius: 0; }
+    .msg.bot { background-color: #ffffff; align-self: flex-start; border-top-left-radius: 0; }
+    .msg-time { display: block; font-size: 10px; color: #999; text-align: right; margin-top: 4px; }
+    .input-area { background-color: #f0f0f0; padding: 10px; display: flex; gap: 10px; align-items: center; }
+    .input-area input { flex: 1; padding: 12px; border: none; border-radius: 20px; outline: none; font-size: 14px; }
+    .input-area button { background-color: #128c7e; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+    .input-area button:hover { background-color: #0d6b60; }
+    .loading { align-self: flex-start; font-size: 12px; color: #555; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 10px; display: none; }
+    .bot-buttons { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+    .bot-button { background-color: #f0f2f5; color: #00a884; border: 1px solid #ddd; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: bold; text-align: center; }
+    .bot-button:hover { background-color: #e9edef; }
+  </style>
+</head>
+<body>
+
+<div class="chat-container">
+  <div class="header">Simulador WhatsApp (Bot)</div>
+  <div class="messages" id="messages">
+    <div class="msg bot">Bem-vindo ao simulador local! Escreva "Ligar minha conta: <seu-id>" para simular a ligação, ou envie uma mensagem normal.<span class="msg-time">Agora</span></div>
+  </div>
+  <div class="loading" id="loading">O bot está a escrever...</div>
+  <div class="input-area">
+    <input type="text" id="userInput" placeholder="Digite uma mensagem..." onkeypress="if(event.key === 'Enter') sendMessage()">
+    <button onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<script>
+  const PHONE_NUMBER = "351917760596"; // O teu número de teste
+  const messagesDiv = document.getElementById('messages');
+  const loadingDiv = document.getElementById('loading');
+  const input = document.getElementById('userInput');
+
+  function addMessage(text, isUser, buttons = null) {
+    const div = document.createElement('div');
+    div.className = `msg ${isUser ? 'user' : 'bot'}`;
+    let content = text.replace(/\n/g, '<br>');
+    
+    if (buttons && buttons.length > 0) {
+      content += `<div class="bot-buttons">`;
+      buttons.forEach(btn => {
+        content += `<div class="bot-button" onclick="sendButtonReply('${btn.reply.id}', '${btn.reply.title}')">${btn.reply.title}</div>`;
+      });
+      content += `</div>`;
+    }
+
+    div.innerHTML = content + `<span class="msg-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>`;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  async function sendToWebhook(messagePayload) {
+    loadingDiv.style.display = 'block';
+    
+    const payload = {
+      entry: [{
+        changes: [{
+          value: {
+            messages: [messagePayload]
+          }
+        }]
+      }]
+    };
+
+    try {
+      const res = await fetch('/api/webhooks/whatsapp', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-simulator': 'true' // Flag especial para o servidor não ligar à Meta
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      loadingDiv.style.display = 'none';
+
+      if (data.simulator_reply) {
+        addMessage(data.simulator_reply, false, data.simulator_buttons);
+      }
+    } catch (err) {
+      loadingDiv.style.display = 'none';
+      addMessage("⚠️ Erro de simulação: " + err.message, false);
+    }
+  }
+
+  function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+    
+    addMessage(text, true);
+    input.value = '';
+
+    const payload = {
+      from: PHONE_NUMBER,
+      type: "text",
+      text: { body: text }
+    };
+    sendToWebhook(payload);
+  }
+
+  function sendButtonReply(id, title) {
+    addMessage(title, true);
+    const payload = {
+      from: PHONE_NUMBER,
+      type: "interactive",
+      interactive: {
+        type: "button_reply",
+        button_reply: { id: id, title: title }
+      }
+    };
+    sendToWebhook(payload);
+  }
+</script>
+
+</body>
+</html>
