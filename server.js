@@ -124,6 +124,10 @@ async function sendMetaWhatsappInteractiveMessage(toPhone, textMessage, buttons)
         }
       })
     });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`Meta API Error (Interactive): ${response.status} - ${errText}`);
+    }
     return response.ok;
   } catch (err) {
     console.error('Erro no envio interativo Meta WhatsApp API:', err);
@@ -152,6 +156,10 @@ async function sendMetaWhatsappMessage(toPhone, textMessage) {
         text: { body: textMessage }
       })
     });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`Meta API Error (Text): ${response.status} - ${errText}`);
+    }
     return response.ok;
   } catch (err) {
     console.error('Erro no envio da Meta WhatsApp API:', err);
